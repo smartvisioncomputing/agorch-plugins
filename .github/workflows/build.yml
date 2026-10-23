@@ -9,10 +9,12 @@ name: build
 # AICL_REPO_TOKEN is a fine-grained token with Contents: read on
 # smartvisioncomputing/aicl only; checkout keeps it out of the git config, and
 # no later step sees it. A pull request from a fork gets no secret: then the
-# job fails when the pull request touches what the full check covers
-# (index/, starters/, connectors/, plugins/, scripts/, .github/,
-# catalog.json), so sealed bytes never merge unchecked, and passes with a
-# warning otherwise (documentation). A push to main without the secret warns.
+# job fails when the pull request changes anything other than documentation
+# (Markdown files at the top level and LICENSE; a plugin's README is sealed
+# into its package): sealed packages, the tools that build, check
+# and publish them (cmd/, scripts/, go.mod, go.sum) and the workflows never
+# merge unchecked. Renames are listed as a deletion plus an addition, so a
+# file moved out of index/ counts too. A push to main without the secret warns.
 # Never switch this to pull_request_target.
 on:
   pull_request:
@@ -42,13 +44,13 @@ jobs:
             exit 0
           fi
           if [ -n "$BASE_SHA" ]; then
-            changed="$(git diff --name-only "$BASE_SHA" HEAD)" || exit 1
-            if printf '%s\n' "$changed" | grep -qE '^(index|starters|connectors|plugins|scripts|\.github)/|^catalog\.json$'; then
-              echo "::error title=Full check required::This pull request changes sealed packages or what builds or checks them, and the full check cannot run without AICL_REPO_TOKEN (a fork gets no secret). A maintainer pushes it to a branch of this repository to run the check."
+            changed="$(git diff --name-only --no-renames "$BASE_SHA" HEAD)" || exit 1
+            if printf '%s\n' "$changed" | grep -vE '^[^/]*\.md$|^LICENSE$' | grep -q .; then
+              echo "::error title=Full check required::This pull request changes more than the top-level documentation (sealed packages, or what builds, checks or publishes them), and the full check cannot run without AICL_REPO_TOKEN (a fork gets no secret). A maintainer pushes it to a branch of this repository to run the check."
               exit 1
             fi
           fi
-          echo "::warning title=Full check skipped::AICL_REPO_TOKEN is not set, so the aicl compiler cannot be fetched. Nothing the full check covers changed, or this is a push; the static workflow still ran."
+          echo "::warning title=Full check skipped::AICL_REPO_TOKEN is not set, so the aicl compiler cannot be fetched. Only documentation changed, or this is a push; the static workflow still ran."
 
       - if: steps.token.outputs.present == 'true'
         uses: actions/checkout@v4
