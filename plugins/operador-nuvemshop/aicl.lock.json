@@ -1,0 +1,47 @@
+{
+  "resolver_version": "aicl-resolver/1",
+  "lock": [
+    {
+      "dependency_id": "nuvemshop",
+      "package": {
+        "namespace": "ao",
+        "package_id": "nuvemshop-mcp",
+        "version": "0.1.3",
+        "digest": "sha256:c09bf14d2fd50e887ecf1aa144c1d80b8fe3127499db2b0b62eba6e3de4b9814"
+      },
+      "depth": 1,
+      "direct": true,
+      "required": true,
+      "selected_for": [
+        "nuvemshop"
+      ]
+    },
+    {
+      "dependency_id": "slack",
+      "package": {
+        "namespace": "ao",
+        "package_id": "slack-mcp",
+        "version": "0.1.3",
+        "digest": "sha256:a37c9a92c4805dce8394dc97c4736895d24a9a3047f676cd0fc134d839670ded"
+      },
+      "depth": 1,
+      "direct": true,
+      "required": true,
+      "selected_for": [
+        "slack"
+      ]
+    }
+  ],
+  "side_effects": {
+    "nuvemshop": {
+      "create_coupon": "mutating",
+      "list_orders": "read_only",
+      "list_products": "read_only",
+      "update_product": "mutating"
+    },
+    "slack": {
+      "slack_search_channels": "read_only",
+      "slack_send_message": "mutating"
+    }
+  }
+}

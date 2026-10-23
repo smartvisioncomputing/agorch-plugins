@@ -1,0 +1,66 @@
+{
+  "resolver_version": "aicl-resolver/1",
+  "lock": [
+    {
+      "dependency_id": "sentry",
+      "package": {
+        "namespace": "ao",
+        "package_id": "sentry-mcp",
+        "version": "0.1.3",
+        "digest": "sha256:62830c7af17637ceccf0d778a4bd406ff4e4698bea7ea5af3f437378da254bea"
+      },
+      "depth": 1,
+      "direct": true,
+      "required": true,
+      "selected_for": [
+        "sentry"
+      ]
+    },
+    {
+      "dependency_id": "github",
+      "package": {
+        "namespace": "ao",
+        "package_id": "github-mcp",
+        "version": "0.1.3",
+        "digest": "sha256:a37f8ec266a93f4dd917e8cd647b97d3cd6b706952bcdcaf7709ea7eb2775969"
+      },
+      "depth": 1,
+      "direct": true,
+      "required": true,
+      "selected_for": [
+        "github"
+      ]
+    },
+    {
+      "dependency_id": "slack",
+      "package": {
+        "namespace": "ao",
+        "package_id": "slack-mcp",
+        "version": "0.1.3",
+        "digest": "sha256:a37c9a92c4805dce8394dc97c4736895d24a9a3047f676cd0fc134d839670ded"
+      },
+      "depth": 1,
+      "direct": true,
+      "required": true,
+      "selected_for": [
+        "slack"
+      ]
+    }
+  ],
+  "side_effects": {
+    "github": {
+      "get_file_contents": "read_only",
+      "github_search_issues": "read_only",
+      "issue_write": "mutating",
+      "list_commits": "read_only"
+    },
+    "sentry": {
+      "get_sentry_resource": "read_only",
+      "sentry_search_issues": "read_only"
+    },
+    "slack": {
+      "slack_search_channels": "read_only",
+      "slack_send_message": "mutating"
+    }
+  }
+}

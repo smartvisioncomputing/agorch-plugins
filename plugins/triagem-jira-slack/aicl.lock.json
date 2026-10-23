@@ -1,0 +1,48 @@
+{
+  "resolver_version": "aicl-resolver/1",
+  "lock": [
+    {
+      "dependency_id": "atlassian",
+      "package": {
+        "namespace": "ao",
+        "package_id": "atlassian-mcp",
+        "version": "0.1.4",
+        "digest": "sha256:ae3ea7397550122e203dee5db68bc1e6722263cd5cf9d33c93e711e50d7d39d0"
+      },
+      "depth": 1,
+      "direct": true,
+      "required": true,
+      "selected_for": [
+        "atlassian"
+      ]
+    },
+    {
+      "dependency_id": "slack",
+      "package": {
+        "namespace": "ao",
+        "package_id": "slack-mcp",
+        "version": "0.1.3",
+        "digest": "sha256:a37c9a92c4805dce8394dc97c4736895d24a9a3047f676cd0fc134d839670ded"
+      },
+      "depth": 1,
+      "direct": true,
+      "required": true,
+      "selected_for": [
+        "slack"
+      ]
+    }
+  ],
+  "side_effects": {
+    "atlassian": {
+      "add_or_edit_jira_issue_comment": "mutating",
+      "edit_jira_issue": "mutating",
+      "get_accessible_atlassian_resources": "read_only",
+      "get_jira_issue": "read_only",
+      "search_jira_issues_using_jql": "read_only"
+    },
+    "slack": {
+      "slack_search_channels": "read_only",
+      "slack_send_message": "mutating"
+    }
+  }
+}

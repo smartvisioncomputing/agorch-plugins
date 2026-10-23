@@ -1,0 +1,47 @@
+{
+  "resolver_version": "aicl-resolver/1",
+  "lock": [
+    {
+      "dependency_id": "rdstation",
+      "package": {
+        "namespace": "ao",
+        "package_id": "rdstation-mcp",
+        "version": "0.1.2",
+        "digest": "sha256:d5f35e264d3c17a52be8b06d7a58269e16ff3f051a4c13086d8312ee68b4ff8c"
+      },
+      "depth": 1,
+      "direct": true,
+      "required": true,
+      "selected_for": [
+        "rdstation"
+      ]
+    },
+    {
+      "dependency_id": "slack",
+      "package": {
+        "namespace": "ao",
+        "package_id": "slack-mcp",
+        "version": "0.1.3",
+        "digest": "sha256:a37c9a92c4805dce8394dc97c4736895d24a9a3047f676cd0fc134d839670ded"
+      },
+      "depth": 1,
+      "direct": true,
+      "required": true,
+      "selected_for": [
+        "slack"
+      ]
+    }
+  ],
+  "side_effects": {
+    "rdstation": {
+      "create_task": "mutating",
+      "move_deal_stage": "mutating",
+      "search_contacts": "read_only",
+      "update_contact": "mutating"
+    },
+    "slack": {
+      "slack_search_channels": "read_only",
+      "slack_send_message": "mutating"
+    }
+  }
+}

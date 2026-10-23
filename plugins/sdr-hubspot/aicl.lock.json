@@ -1,0 +1,47 @@
+{
+  "resolver_version": "aicl-resolver/1",
+  "lock": [
+    {
+      "dependency_id": "hubspot",
+      "package": {
+        "namespace": "ao",
+        "package_id": "hubspot-mcp",
+        "version": "0.1.3",
+        "digest": "sha256:409767032267a3c41a8c94dfc8095a3a85b13a77d0b6acc4b4bf3dfbcbb3a346"
+      },
+      "depth": 1,
+      "direct": true,
+      "required": true,
+      "selected_for": [
+        "hubspot"
+      ]
+    },
+    {
+      "dependency_id": "slack",
+      "package": {
+        "namespace": "ao",
+        "package_id": "slack-mcp",
+        "version": "0.1.3",
+        "digest": "sha256:a37c9a92c4805dce8394dc97c4736895d24a9a3047f676cd0fc134d839670ded"
+      },
+      "depth": 1,
+      "direct": true,
+      "required": true,
+      "selected_for": [
+        "slack"
+      ]
+    }
+  ],
+  "side_effects": {
+    "hubspot": {
+      "get_crm_objects": "read_only",
+      "manage_crm_objects": "mutating",
+      "search_crm_objects": "read_only",
+      "search_owners": "read_only"
+    },
+    "slack": {
+      "slack_search_channels": "read_only",
+      "slack_send_message": "mutating"
+    }
+  }
+}
