@@ -1,0 +1,13 @@
+# Build output and local binaries
+/out/
+/dist/
+/bin/
+*.tmp
+.DS_Store
+# Never commit credentials
+.env
+.env.*
+*.pem
+*.key
+# aicl checkout in CI
+/.aicl-src/

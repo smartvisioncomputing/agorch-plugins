@@ -1,0 +1,67 @@
+# Official Sentry MCP server. Checked on 2026-10-01:
+#   doc:    https://mcp.sentry.dev/ (docs.sentry.io/product/sentry-mcp/ redirects)
+#   tools:  https://github.com/getsentry/sentry-mcp (packages/mcp-core/src/tools)
+#   OAuth:  https://mcp.sentry.dev/.well-known/oauth-authorization-server
+#           (authorize, token, register: DCR)
+stack "sentry" {
+  aicl_version = "1.1"
+  version      = "0.1.3"
+}
+
+authority "sentry_mcp" {
+  origins  = ["https://mcp.sentry.dev"]
+  purposes = ["mcp_server", "oauth_authorization", "oauth_token", "oauth_registration"]
+}
+
+# The server supports dynamic client registration, but a sealed package
+# (ComponentPackage v1.1) does not carry a dynamic client, so it declares
+# pre_registered + ao_managed: Agorch registers one client with the vendor and
+# uses it for every organization that connects.
+auth_provider "sentry_oauth" {
+  authorities = ["sentry_mcp"]
+  principal   = "organization" # one connection per Agorch organization
+  oauth2_authorization_code_pkce {
+    registration            = "pre_registered"
+    client_mode             = "ao_managed"
+    authorization_authority = "sentry_mcp"
+    authorization_path      = "/oauth/authorize"
+    token_authority         = "sentry_mcp"
+    token_path              = "/oauth/token"
+    issuer                  = "https://mcp.sentry.dev" # RFC 8414, exactly as the authorization server publishes it
+    # unverified: the scopes the two tools require in the server's code;
+    # scopes_supported only announces org:read, project:write, team:write,
+    # event:write and alerts:write.
+    scopes        = ["org:read", "project:read", "event:read"]
+    redirect_uris = ["https://app.agorch.ai/connection-oauth/callback"]
+  }
+}
+
+# Only tools exposed directly to the client (catalog tools such as
+# find_releases need search_sentry_tools/execute_sentry_tool). Read-only.
+mcp_server "sentry_mcp" {
+  authority = "sentry_mcp"
+  url       = "https://mcp.sentry.dev/mcp"
+  auth      = "sentry_oauth"
+  allow     = ["search_issues", "get_sentry_resource"]
+}
+
+tool "sentry_search_issues" {
+  name        = "Search Sentry issues"
+  side_effect = "read_only"
+  timeout_ms  = 30000
+  mcp {
+    server = "sentry_mcp"
+    tool   = "search_issues"
+  }
+}
+
+tool "get_sentry_resource" {
+  name        = "Read Sentry issue or event"
+  description = "Issue, event or trace detail: stack, release, tags."
+  side_effect = "read_only"
+  timeout_ms  = 30000
+  mcp {
+    server = "sentry_mcp"
+    tool   = "get_sentry_resource"
+  }
+}

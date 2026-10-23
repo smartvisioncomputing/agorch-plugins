@@ -1,0 +1,69 @@
+stack "plantao_sentry_github" {
+  aicl_version = "1.1"
+  version      = "0.1.1"
+}
+
+skill "plantao" {
+  instructions = file("skills/plantao/SKILL.md")
+}
+
+agent "plantonista" {
+  name        = "Plantonista de erros"
+  description = "Transforma erros novos do Sentry em issues do GitHub com dono."
+  instruction = "Você é o plantonista de erros do time de engenharia. Responda em português, curto. Use só dados do Sentry e do GitHub; nunca invente stack, release, arquivo ou pessoa."
+  skills      = ["plantao"]
+
+  model {
+    requires {
+      capabilities       = ["tool_calling"]
+      min_context_window = 128000
+    }
+  }
+
+  tool "sentry:sentry_search_issues" {}
+  tool "sentry:get_sentry_resource" {}
+  tool "github:github_search_issues" {}
+  tool "github:get_file_contents" {}
+  tool "github:list_commits" {}
+  tool "github:issue_write" { approval = "human_required" }
+  tool "slack:slack_search_channels" {}
+  tool "slack:slack_send_message" { approval = "human_required" }
+
+  limits {
+    max_turns           = 24
+    max_tool_calls      = 48
+    tool_parallel_limit = 4
+  }
+}
+
+scenario "erro_novo_vira_issue" {
+  agent = "plantonista"
+  input = "Veja os erros novos da última hora no projeto web do Sentry, abra issue no repositório acme/web para os que ainda não têm e avise o #plantao."
+  expect {
+    tools_called = [
+      "sentry:sentry_search_issues",
+      "sentry:get_sentry_resource",
+      "github:github_search_issues",
+      "github:issue_write",
+      "slack:slack_send_message",
+    ]
+  }
+}
+
+scenario "so_listar" {
+  agent = "plantonista"
+  input = "Só me liste os erros novos de hoje no projeto api do Sentry, agrupados. Não abra issue nem avise ninguém."
+  expect {
+    tools_called = ["sentry:sentry_search_issues"]
+    no_tool      = ["github:issue_write", "slack:slack_send_message"]
+  }
+}
+
+scenario "dono_do_codigo" {
+  agent = "plantonista"
+  input = "Quem é o dono do código do erro WEB-123 do Sentry? O repositório é acme/web."
+  expect {
+    tools_called = ["sentry:get_sentry_resource", "github:get_file_contents"]
+    no_tool      = ["github:issue_write"]
+  }
+}

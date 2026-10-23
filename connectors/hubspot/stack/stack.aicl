@@ -1,0 +1,89 @@
+# Official HubSpot remote MCP server. Checked on 2026-10-01:
+#   doc:    https://developers.hubspot.com/docs/apps/developer-platform/build-apps/integrate-with-the-remote-hubspot-mcp-server
+#   OAuth:  https://mcp.hubspot.com/.well-known/oauth-authorization-server
+#           (no registration_endpoint: no DCR; needs an "MCP auth app")
+stack "hubspot" {
+  aicl_version = "1.1"
+  version      = "0.1.3"
+}
+
+# One origin for the MCP server and for the MCP auth app's OAuth.
+authority "hubspot_mcp" {
+  origins  = ["https://mcp.hubspot.com"]
+  purposes = ["mcp_server", "oauth_authorization", "oauth_token"]
+}
+
+# An admin creates an "MCP auth app" at app.hubspot.com/l/mcp-auth-apps/ and
+# enters its client id and secret in Agorch. The values live in Agorch, never
+# in this repository.
+secret_ref "hubspot_client_id" { name = "HubSpot MCP auth app client id" }
+secret_ref "hubspot_client_secret" { name = "HubSpot MCP auth app client secret" }
+
+auth_provider "hubspot_oauth" {
+  authorities = ["hubspot_mcp"]
+  principal   = "organization" # authorize/user: the person who connects authorizes for the organization
+  oauth2_authorization_code_pkce {
+    registration            = "pre_registered"
+    client_mode             = "organization_byo_client"
+    client_id_ref           = "hubspot_client_id"
+    client_secret_ref       = "hubspot_client_secret" # client_secret_post
+    authorization_authority = "hubspot_mcp"
+    authorization_path      = "/oauth/authorize/user"
+    token_authority         = "hubspot_mcp"
+    token_path              = "/oauth/v3/token"
+    issuer                  = "https://mcp.hubspot.com" # RFC 8414, exactly as the authorization server publishes it
+    # HubSpot grants MCP access by the installed tools and publishes an empty
+    # scopes_supported: no scope is requested (warning auth.scopes_empty).
+    scopes        = []
+    redirect_uris = ["https://app.agorch.ai/connection-oauth/callback"]
+  }
+}
+
+mcp_server "hubspot_mcp" {
+  authority = "hubspot_mcp"
+  url       = "https://mcp.hubspot.com/" # the root with "/": an exact endpoint needs a path
+  auth      = "hubspot_oauth"
+  allow     = ["search_crm_objects", "get_crm_objects", "manage_crm_objects", "search_owners"]
+}
+
+tool "search_crm_objects" {
+  name        = "Search CRM records"
+  side_effect = "read_only"
+  timeout_ms  = 30000
+  mcp {
+    server = "hubspot_mcp"
+    tool   = "search_crm_objects"
+  }
+}
+
+tool "get_crm_objects" {
+  name        = "Read CRM records"
+  side_effect = "read_only"
+  timeout_ms  = 30000
+  mcp {
+    server = "hubspot_mcp"
+    tool   = "get_crm_objects"
+  }
+}
+
+# Creates and updates contacts, deals and activities (note, task).
+tool "manage_crm_objects" {
+  name        = "Write CRM records"
+  side_effect = "mutating"
+  idempotency = "not_idempotent" # a write: never retried automatically
+  timeout_ms  = 30000
+  mcp {
+    server = "hubspot_mcp"
+    tool   = "manage_crm_objects"
+  }
+}
+
+tool "search_owners" {
+  name        = "Search sales reps (owners)"
+  side_effect = "read_only"
+  timeout_ms  = 20000
+  mcp {
+    server = "hubspot_mcp"
+    tool   = "search_owners"
+  }
+}

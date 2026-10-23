@@ -1,0 +1,125 @@
+# Official Atlassian Rovo MCP server. Checked on 2026-10-01:
+#   tools:  https://developer.atlassian.com/cloud/rovo-mcp/guides/supported-tools/
+#           (again on 2026-10-15: createJiraIssue is primary, write_jira group)
+#   OAuth:  https://mcp.atlassian.com/.well-known/oauth-protected-resource/v2/mcp
+#           -> AS https://auth.atlassian.com (authorize, oauth/token, DCR)
+stack "atlassian" {
+  aicl_version = "1.1"
+  version      = "0.1.4"
+}
+
+authority "atlassian_mcp" {
+  origins  = ["https://mcp.atlassian.com"]
+  purposes = ["mcp_server"]
+}
+
+authority "atlassian_auth" {
+  origins  = ["https://auth.atlassian.com"]
+  purposes = ["oauth_authorization", "oauth_token", "oauth_registration"]
+}
+
+# The server supports dynamic client registration, but a sealed package
+# (ComponentPackage v1.1) does not carry a dynamic client, so it declares
+# pre_registered + ao_managed: Agorch registers one client with the vendor and
+# uses it for every organization that connects.
+auth_provider "atlassian_oauth" {
+  authorities = ["atlassian_mcp"]
+  principal   = "organization" # one connection per Agorch organization
+  oauth2_authorization_code_pkce {
+    registration            = "pre_registered"
+    client_mode             = "ao_managed"
+    authorization_authority = "atlassian_auth"
+    authorization_path      = "/authorize"
+    token_authority         = "atlassian_auth"
+    token_path              = "/oauth/token"
+    issuer                  = "https://auth.atlassian.com/VCeDsk8ZHncYF1g234fKtc4lNipbBhu3" # RFC 8414, exactly as the authorization server publishes it
+    # v2 agent scopes: search, read, write (edit and comment).
+    scopes = [
+      "search:jira:agent-interface",
+      "read:jira:agent-interface",
+      "write:jira:agent-interface",
+    ]
+    redirect_uris = ["https://app.agorch.ai/connection-oauth/callback"]
+  }
+}
+
+# Only v2 "primary" tools: they are listed by tools/list without ?tools=all.
+mcp_server "atlassian_mcp" {
+  authority = "atlassian_mcp"
+  url       = "https://mcp.atlassian.com/v2/mcp" # v1 starts serving v2 on 2027-03-01
+  auth      = "atlassian_oauth"
+  allow = [
+    "getAccessibleAtlassianResources",
+    "searchJiraIssuesUsingJql",
+    "getJiraIssue",
+    "createJiraIssue",
+    "editJiraIssue",
+    "addOrEditJiraIssueComment",
+  ]
+}
+
+tool "get_accessible_atlassian_resources" {
+  name        = "List Atlassian sites"
+  description = "Sites (cloudId) the connected user can access."
+  side_effect = "read_only"
+  timeout_ms  = 20000
+  mcp {
+    server = "atlassian_mcp"
+    tool   = "getAccessibleAtlassianResources"
+  }
+}
+
+tool "search_jira_issues_using_jql" {
+  name        = "Search Jira issues (JQL)"
+  side_effect = "read_only"
+  timeout_ms  = 30000
+  mcp {
+    server = "atlassian_mcp"
+    tool   = "searchJiraIssuesUsingJql"
+  }
+}
+
+tool "get_jira_issue" {
+  name        = "Read Jira issue"
+  side_effect = "read_only"
+  timeout_ms  = 20000
+  mcp {
+    server = "atlassian_mcp"
+    tool   = "getJiraIssue"
+  }
+}
+
+tool "create_jira_issue" {
+  name        = "Create Jira issue"
+  description = "Opens an issue in a project: summary, type, description and project fields."
+  side_effect = "mutating"
+  idempotency = "not_idempotent" # a write: never retried automatically
+  timeout_ms  = 30000
+  mcp {
+    server = "atlassian_mcp"
+    tool   = "createJiraIssue"
+  }
+}
+
+tool "edit_jira_issue" {
+  name        = "Edit Jira issue"
+  description = "Changes editable fields: priority, component, assignee."
+  side_effect = "mutating"
+  idempotency = "not_idempotent" # a write: never retried automatically
+  timeout_ms  = 30000
+  mcp {
+    server = "atlassian_mcp"
+    tool   = "editJiraIssue"
+  }
+}
+
+tool "add_or_edit_jira_issue_comment" {
+  name        = "Comment on Jira issue"
+  side_effect = "mutating"
+  idempotency = "not_idempotent" # a write: never retried automatically
+  timeout_ms  = 30000
+  mcp {
+    server = "atlassian_mcp"
+    tool   = "addOrEditJiraIssueComment"
+  }
+}

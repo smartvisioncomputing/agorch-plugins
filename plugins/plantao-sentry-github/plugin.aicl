@@ -1,0 +1,41 @@
+plugin "plantao-sentry-github" {
+  aicl_version  = "1.1"
+  namespace     = "ao"
+  version       = "0.1.1"
+  publisher     = "publisher:ao"
+  description   = "Plantão de erros Sentry -> GitHub: agrupa erros novos, abre issue com stack e release, marca o dono do código e avisa o canal."
+  license       = "Apache-2.0"
+  release_notes = "Pins the connector releases with English tool names and descriptions. The skill, scenarios and agents are unchanged."
+  stack         = "./stack"
+
+  exports {
+    agents = ["plantonista"]
+    skills = ["plantao"]
+  }
+
+  requires "sentry" {
+    package = "ao/sentry-mcp"
+    version = "^0.1.0"
+    tools   = ["sentry_search_issues", "get_sentry_resource"]
+    reason  = "Ler os erros novos, com stack trace, release e quantidade de eventos"
+  }
+
+  requires "github" {
+    package = "ao/github-mcp"
+    version = "^0.1.0"
+    tools   = ["github_search_issues", "get_file_contents", "list_commits", "issue_write"]
+    reason  = "Evitar issue duplicada, achar o dono do código (CODEOWNERS e commits) e abrir a issue"
+  }
+
+  requires "slack" {
+    package = "ao/slack-mcp"
+    version = "^0.1.0"
+    tools   = ["slack_search_channels", "slack_send_message"]
+    reason  = "Avisar o canal de plantão com o link da issue"
+  }
+
+  permissions {
+    side_effects = ["read_only", "mutating"]
+    data_sent    = ["error_message", "stack_trace", "release", "issue_title", "issue_body", "slack_message_text"]
+  }
+}

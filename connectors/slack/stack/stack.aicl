@@ -1,0 +1,70 @@
+# Official Slack MCP server. Checked on 2026-10-01:
+#   doc:    https://docs.slack.dev/ai/slack-mcp-server/ (no DCR; internal or
+#           Slack Marketplace apps only; user token; PKCE S256)
+#   tools:  https://github.com/slackapi/slack-skills-plugin (official repository)
+stack "slack" {
+  aicl_version = "1.1"
+  version      = "0.1.3"
+}
+
+authority "slack_mcp" {
+  origins  = ["https://mcp.slack.com"]
+  purposes = ["mcp_server"]
+}
+
+authority "slack_auth" {
+  origins  = ["https://slack.com"]
+  purposes = ["oauth_authorization", "oauth_token"]
+}
+
+# The Slack app belongs to the organization (internal to the workspace): an
+# admin creates the app and enters its client id and secret in Agorch. The
+# values live in Agorch, never in this repository.
+secret_ref "slack_client_id" { name = "Slack app client id" }
+secret_ref "slack_client_secret" { name = "Slack app client secret" }
+
+auth_provider "slack_oauth" {
+  authorities = ["slack_mcp"]
+  principal   = "organization" # Slack MCP only takes a user token: the one who connects, for the organization
+  oauth2_authorization_code_pkce {
+    registration            = "pre_registered"
+    client_mode             = "organization_byo_client"
+    client_id_ref           = "slack_client_id"
+    client_secret_ref       = "slack_client_secret" # confidential client (client_secret_post)
+    authorization_authority = "slack_auth"
+    authorization_path      = "/oauth/v2_user/authorize"
+    token_authority         = "slack_auth"
+    token_path              = "/api/oauth.v2.user.access"
+    issuer                  = "https://mcp.slack.com" # RFC 8414, exactly as the authorization server publishes it
+    scopes                  = ["search:read.public", "chat:write"]
+    redirect_uris           = ["https://app.agorch.ai/connection-oauth/callback"]
+  }
+}
+
+mcp_server "slack_mcp" {
+  authority = "slack_mcp"
+  url       = "https://mcp.slack.com/mcp"
+  auth      = "slack_oauth"
+  allow     = ["slack_search_channels", "slack_send_message"]
+}
+
+tool "slack_search_channels" {
+  name        = "Find Slack channel"
+  side_effect = "read_only"
+  timeout_ms  = 20000
+  mcp {
+    server = "slack_mcp"
+    tool   = "slack_search_channels"
+  }
+}
+
+tool "slack_send_message" {
+  name        = "Send Slack message"
+  side_effect = "mutating"
+  idempotency = "not_idempotent" # a write: never retried automatically
+  timeout_ms  = 20000
+  mcp {
+    server = "slack_mcp"
+    tool   = "slack_send_message"
+  }
+}

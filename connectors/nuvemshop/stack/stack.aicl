@@ -1,0 +1,98 @@
+# Official Nuvemshop admin MCP server. Checked on 2026-10-01:
+#   doc:    https://atendimento.nuvemshop.com.br/pt_BR/conectores-de-ia (4 read
+#           tools and 11 write tools; the list of names is not public)
+#   OAuth:  https://admin-mcp.tiendanube.com/.well-known/oauth-authorization-server
+#           (authorize, token, register: DCR; 1-hour token, refreshed)
+# The tiendanube host (public metadata read on 2026-10-02): the
+# oauth-protected-resource of admin-mcp.nuvemshop.com.br announces resource and
+# authorization server at https://admin-mcp.tiendanube.com/, and tiendanube's
+# own metadata is consistent. RFC 9728 §3.3 forbids a client from using the
+# .com.br host (resource differs from the URL queried), so the package uses the
+# announced host.
+stack "nuvemshop" {
+  aicl_version = "1.1"
+  version      = "0.1.3"
+}
+
+authority "nuvemshop_mcp" {
+  origins  = ["https://admin-mcp.tiendanube.com"]
+  purposes = ["mcp_server", "oauth_authorization", "oauth_token", "oauth_registration"]
+}
+
+# Store OAuth: the merchant signs in and authorizes their own store. The server
+# supports dynamic client registration, but a sealed package (ComponentPackage
+# v1.1) does not carry a dynamic client, so it declares pre_registered +
+# ao_managed: Agorch registers one client with the vendor and uses it for every
+# organization that connects.
+auth_provider "nuvemshop_oauth" {
+  authorities = ["nuvemshop_mcp"]
+  principal   = "organization" # the store belongs to the organization, not to a user
+  oauth2_authorization_code_pkce {
+    registration            = "pre_registered"
+    client_mode             = "ao_managed"
+    authorization_authority = "nuvemshop_mcp"
+    authorization_path      = "/authorize"
+    token_authority         = "nuvemshop_mcp"
+    token_path              = "/token"
+    issuer                  = "https://admin-mcp.tiendanube.com/" # RFC 8414, exactly as the authorization server publishes it
+    scopes                  = ["read_orders", "read_products", "write_products", "write_coupons"]
+    redirect_uris           = ["https://app.agorch.ai/connection-oauth/callback"]
+  }
+}
+
+# unverified: the names of the 15 tools are not in a public official source
+# (the ones in circulation come from third-party servers). They are confirmed
+# with an authenticated tools/list; the AICL ids below do not change.
+mcp_server "nuvemshop_mcp" {
+  authority = "nuvemshop_mcp"
+  url       = "https://admin-mcp.tiendanube.com/" # the root with "/": an exact endpoint needs a path
+  auth      = "nuvemshop_oauth"
+  allow = [
+    "list_orders",    # unverified
+    "list_products",  # unverified
+    "update_product", # unverified
+    "create_coupon",  # unverified
+  ]
+}
+
+tool "list_orders" {
+  name        = "List orders"
+  side_effect = "read_only"
+  timeout_ms  = 30000
+  mcp {
+    server = "nuvemshop_mcp"
+    tool   = "list_orders" # unverified
+  }
+}
+
+tool "list_products" {
+  name        = "List products and stock"
+  side_effect = "read_only"
+  timeout_ms  = 30000
+  mcp {
+    server = "nuvemshop_mcp"
+    tool   = "list_products" # unverified
+  }
+}
+
+tool "update_product" {
+  name        = "Update product (price, stock)"
+  side_effect = "mutating"
+  idempotency = "not_idempotent" # a write: never retried automatically
+  timeout_ms  = 30000
+  mcp {
+    server = "nuvemshop_mcp"
+    tool   = "update_product" # unverified
+  }
+}
+
+tool "create_coupon" {
+  name        = "Create coupon"
+  side_effect = "mutating"
+  idempotency = "not_idempotent" # a write: never retried automatically
+  timeout_ms  = 30000
+  mcp {
+    server = "nuvemshop_mcp"
+    tool   = "create_coupon" # unverified
+  }
+}

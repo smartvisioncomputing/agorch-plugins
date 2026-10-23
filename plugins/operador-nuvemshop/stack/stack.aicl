@@ -1,0 +1,73 @@
+stack "operador_nuvemshop" {
+  aicl_version = "1.1"
+  version      = "0.1.1"
+}
+
+tool "calcular" {
+  name        = "Calculadora"
+  description = "Faturamento do dia, ticket médio e preço com desconto."
+  side_effect = "read_only"
+  builtin { name = "calculator" }
+}
+
+skill "operacao" {
+  instructions = file("skills/operacao/SKILL.md")
+  tools        = ["calcular"]
+}
+
+agent "operador" {
+  name        = "Operador da loja"
+  description = "Acompanha pedidos e estoque da Nuvemshop e propõe preço e cupom."
+  instruction = "Você é o operador da loja. Responda em português, curto. Use só dados da Nuvemshop; nunca invente pedido, produto, estoque ou preço."
+  skills      = ["operacao"]
+
+  model {
+    requires {
+      capabilities       = ["tool_calling"]
+      min_context_window = 128000
+    }
+  }
+
+  tool "calcular" {}
+  tool "nuvemshop:list_orders" {}
+  tool "nuvemshop:list_products" {}
+  tool "nuvemshop:update_product" { approval = "human_required" } # price and stock
+  tool "nuvemshop:create_coupon" { approval = "human_required" }
+  tool "slack:slack_search_channels" {}
+  tool "slack:slack_send_message" { approval = "human_required" }
+
+  limits {
+    max_turns           = 16
+    max_tool_calls      = 30
+    tool_parallel_limit = 3
+  }
+}
+
+scenario "resumo_do_dia" {
+  agent = "operador"
+  input = "Faça o resumo de pedidos de ontem (quantidade, faturamento e ticket médio) e poste no #loja."
+  expect {
+    tools_called = ["nuvemshop:list_orders", "calcular", "slack:slack_send_message"]
+  }
+}
+
+scenario "estoque_baixo" {
+  agent = "operador"
+  input = "Quais produtos estão com 5 unidades ou menos em estoque? Só me avise, não altere nada."
+  expect {
+    tools_called = ["nuvemshop:list_products"]
+    no_tool      = ["nuvemshop:update_product", "nuvemshop:create_coupon"]
+  }
+}
+
+scenario "preco_e_cupom" {
+  agent = "operador"
+  input = "Baixe em 10% o preço da Camiseta Básica Preta e crie o cupom VOLTA10 de 10% válido por 7 dias."
+  expect {
+    tools_called = [
+      "nuvemshop:list_products",
+      "nuvemshop:update_product",
+      "nuvemshop:create_coupon",
+    ]
+  }
+}

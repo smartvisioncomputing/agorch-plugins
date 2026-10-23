@@ -1,0 +1,34 @@
+plugin "sdr-rdstation" {
+  aicl_version  = "1.1"
+  namespace     = "ao"
+  version       = "0.1.1"
+  publisher     = "publisher:ao"
+  description   = "SDR com RD Station: qualifica leads novos, move no funil, cria follow-up e avisa o vendedor no Slack."
+  license       = "Apache-2.0"
+  release_notes = "Pins the connector releases with English tool names and descriptions. The skill, scenarios and agents are unchanged."
+  stack         = "./stack"
+
+  exports {
+    agents = ["sdr"]
+    skills = ["qualificacao"]
+  }
+
+  requires "rdstation" {
+    package = "ao/rdstation-mcp"
+    version = "^0.1.0"
+    tools   = ["search_contacts", "update_contact", "move_deal_stage", "create_task"]
+    reason  = "Ler leads, gravar a qualificação, mover a negociação de etapa e criar a tarefa de follow-up"
+  }
+
+  requires "slack" {
+    package = "ao/slack-mcp"
+    version = "^0.1.0"
+    tools   = ["slack_search_channels", "slack_send_message"]
+    reason  = "Avisar o vendedor dono do lead no canal de vendas"
+  }
+
+  permissions {
+    side_effects = ["read_only", "mutating"]
+    data_sent    = ["lead_name", "lead_email", "lead_company", "deal_stage", "slack_message_text"]
+  }
+}

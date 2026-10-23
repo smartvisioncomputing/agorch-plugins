@@ -1,0 +1,25 @@
+plugin "stripe" {
+  aicl_version  = "1.1"
+  namespace     = "ao"
+  version       = "0.1.2"
+  publisher     = "publisher:ao"
+  description   = "Stripe MCP (official): read invoices and customers, create payment links and refunds with approval."
+  license       = "Apache-2.0"
+  stack         = "./stack"
+  readme        = "./README.md"
+  release_notes = "Adds the Apache-2.0 license, an English README, English tool names and descriptions, plain-language descriptions of the requested permissions and the source commit this release was built from. Tool behavior, permissions and endpoints are unchanged."
+  source {
+    repository = "https://github.com/smartvisioncomputing/agorch-plugins"
+  }
+
+  exports {
+    tools = ["stripe_api_read", "stripe_api_write"]
+  }
+
+  permissions {
+    authorities  = ["stripe_mcp"]
+    side_effects = ["read_only", "destructive"]
+    data_sent    = ["stripe_api_request", "payment_amount", "customer_id"]
+    secrets      = ["stripe_agent_key"]
+  }
+}

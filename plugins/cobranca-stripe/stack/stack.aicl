@@ -1,0 +1,78 @@
+stack "cobranca_stripe" {
+  aicl_version = "1.1"
+  version      = "0.1.1"
+}
+
+tool "calcular" {
+  name        = "Calculadora"
+  description = "Somas de saldo devedor, juros e descontos."
+  side_effect = "read_only"
+  builtin { name = "calculator" }
+}
+
+skill "cobranca" {
+  instructions = file("skills/cobranca/SKILL.md")
+  tools        = ["calcular"]
+}
+
+agent "cobrador" {
+  name        = "Cobrador Stripe"
+  description = "Recupera faturas vencidas na Stripe e registra no CRM."
+  instruction = "Você é o analista de cobrança. Responda em português, curto e cordial. Valores só da Stripe; nunca invente fatura, valor ou prazo. Reembolso só com pedido explícito e aprovação humana."
+  skills      = ["cobranca"]
+
+  model {
+    requires {
+      capabilities       = ["tool_calling"]
+      min_context_window = 128000
+    }
+  }
+
+  tool "calcular" {}
+  tool "stripe:stripe_api_read" {}
+  tool "stripe:stripe_api_write" { approval = "human_required" } # payment links and refunds
+  tool "hubspot:search_crm_objects" {}
+  tool "hubspot:manage_crm_objects" { approval = "human_required" }
+  tool "slack:slack_search_channels" {}
+  tool "slack:slack_send_message" { approval = "human_required" }
+
+  limits {
+    max_turns           = 20
+    max_tool_calls      = 40
+    tool_parallel_limit = 3
+  }
+}
+
+scenario "faturas_vencidas" {
+  agent = "cobrador"
+  input = "Liste as faturas vencidas há mais de 7 dias, gere um payment link para cada uma, registre no HubSpot e prepare o lembrete no #financeiro."
+  expect {
+    tools_called = [
+      "stripe:stripe_api_read",
+      "stripe:stripe_api_write",
+      "hubspot:manage_crm_objects",
+      "slack:slack_send_message",
+    ]
+  }
+}
+
+scenario "so_total_em_aberto" {
+  agent = "cobrador"
+  input = "Quanto temos em faturas vencidas hoje, somando tudo? Só consulte, não crie nada."
+  expect {
+    tools_called = ["stripe:stripe_api_read", "calcular"]
+    no_tool = [
+      "stripe:stripe_api_write",
+      "hubspot:manage_crm_objects",
+      "slack:slack_send_message",
+    ]
+  }
+}
+
+scenario "reembolso_pedido" {
+  agent = "cobrador"
+  input = "O cliente pediu o reembolso integral da última fatura paga dele, cliente cus_EXEMPLO. Faça o reembolso."
+  expect {
+    tools_called = ["stripe:stripe_api_read", "stripe:stripe_api_write"]
+  }
+}

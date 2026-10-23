@@ -1,0 +1,29 @@
+plugin "slack" {
+  aicl_version  = "1.1"
+  namespace     = "ao"
+  version       = "0.1.3"
+  publisher     = "publisher:ao"
+  description   = "Slack MCP (official): find a channel and post a message as the connected user."
+  license       = "Apache-2.0"
+  stack         = "./stack"
+  readme        = "./README.md"
+  release_notes = "Adds the Apache-2.0 license, an English README, English tool names and descriptions, plain-language descriptions of the requested permissions and the source commit this release was built from. Tool behavior, permissions and endpoints are unchanged."
+  scope_labels = {
+    "search:read.public" = "Find public channels"
+    "chat:write"         = "Post messages as the person who connected"
+  }
+  source {
+    repository = "https://github.com/smartvisioncomputing/agorch-plugins"
+  }
+
+  exports {
+    tools = ["slack_search_channels", "slack_send_message"]
+  }
+
+  permissions {
+    authorities  = ["slack_mcp"]
+    side_effects = ["read_only", "mutating"]
+    data_sent    = ["slack_channel_query", "slack_message_text"]
+    secrets      = ["slack_client_id", "slack_client_secret"]
+  }
+}

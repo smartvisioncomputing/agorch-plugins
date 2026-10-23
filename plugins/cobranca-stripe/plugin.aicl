@@ -1,0 +1,42 @@
+plugin "cobranca-stripe" {
+  aicl_version  = "1.1"
+  namespace     = "ao"
+  version       = "0.1.1"
+  publisher     = "publisher:ao"
+  description   = "Cobrança e recuperação Stripe: faturas vencidas, payment link, registro no CRM e lembrete; reembolso só com aprovação."
+  license       = "Apache-2.0"
+  release_notes = "Pins the connector releases with English tool names and descriptions. The skill, scenarios and agents are unchanged."
+  stack         = "./stack"
+
+  exports {
+    agents = ["cobrador"]
+    tools  = ["calcular"]
+    skills = ["cobranca"]
+  }
+
+  requires "stripe" {
+    package = "ao/stripe-mcp"
+    version = "^0.1.0"
+    tools   = ["stripe_api_read", "stripe_api_write"]
+    reason  = "Ler faturas vencidas e clientes, criar payment link e, com aprovação, reembolso"
+  }
+
+  requires "hubspot" {
+    package = "ao/hubspot-mcp"
+    version = "^0.1.0"
+    tools   = ["search_crm_objects", "manage_crm_objects"]
+    reason  = "Achar o cliente no CRM e registrar a cobrança como nota e tarefa"
+  }
+
+  requires "slack" {
+    package = "ao/slack-mcp"
+    version = "^0.1.0"
+    tools   = ["slack_search_channels", "slack_send_message"]
+    reason  = "Mandar o lembrete preparado para o canal do financeiro"
+  }
+
+  permissions {
+    side_effects = ["read_only", "mutating", "destructive"]
+    data_sent    = ["customer_email", "invoice_id", "payment_amount", "crm_note_text", "slack_message_text"]
+  }
+}

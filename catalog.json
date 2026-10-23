@@ -1,0 +1,168 @@
+{
+  "$comment": "Source of the first-party marketplace listing. One item per connector in index/. rank: lower shows first. category: a slug from the closed `categories` enum (the same list the API validates). scripts/check.sh validates this file against index/ and plugins/.",
+  "namespace": "ao",
+  "publisher_id": "publisher:ao",
+  "categories": [
+    { "id": "sales_marketing", "label": "Sales & Marketing" },
+    { "id": "payments_commerce", "label": "Payments & Commerce" },
+    { "id": "work_docs", "label": "Work & Docs" },
+    { "id": "communication", "label": "Communication" },
+    { "id": "engineering", "label": "Engineering" }
+  ],
+  "connectors": [
+    {
+      "id": "ao/hubspot-mcp",
+      "display_name": "HubSpot",
+      "summary": "Search, read and update HubSpot contacts and deals without leaving your agent.",
+      "category": "sales_marketing",
+      "rank": 1,
+      "vendor_official": true,
+      "beta": false,
+      "auth_kind": "oauth",
+      "logo": "hubspot.svg"
+    },
+    {
+      "id": "ao/rdstation-mcp",
+      "display_name": "RD Station",
+      "summary": "Leads, funnel and tasks from RD Station, right inside your agent.",
+      "category": "sales_marketing",
+      "rank": 2,
+      "vendor_official": true,
+      "beta": true,
+      "auth_kind": "oauth",
+      "logo": "rdstation.svg"
+    },
+    {
+      "id": "ao/stripe-mcp",
+      "display_name": "Stripe",
+      "summary": "Look up invoices and customers and create payment links, with refunds held for approval.",
+      "category": "payments_commerce",
+      "rank": 3,
+      "vendor_official": true,
+      "beta": false,
+      "auth_kind": "api_key",
+      "logo": "stripe.svg"
+    },
+    {
+      "id": "ao/nuvemshop-mcp",
+      "display_name": "Nuvemshop",
+      "summary": "Orders, stock, prices and coupons for your store.",
+      "category": "payments_commerce",
+      "rank": 4,
+      "vendor_official": true,
+      "beta": true,
+      "auth_kind": "oauth",
+      "logo": "nuvemshop.svg"
+    },
+    {
+      "id": "ao/atlassian-mcp",
+      "display_name": "Atlassian",
+      "summary": "Create and prioritize Jira issues without leaving your agent.",
+      "category": "work_docs",
+      "rank": 5,
+      "vendor_official": true,
+      "beta": false,
+      "auth_kind": "oauth",
+      "logo": "atlassian.svg"
+    },
+    {
+      "id": "ao/monday-mcp",
+      "display_name": "monday.com",
+      "summary": "Read monday.com boards and items.",
+      "category": "work_docs",
+      "rank": 6,
+      "vendor_official": true,
+      "beta": false,
+      "auth_kind": "oauth",
+      "logo": "monday.svg"
+    },
+    {
+      "id": "ao/notion-mcp",
+      "display_name": "Notion",
+      "summary": "Search and read Notion pages and databases.",
+      "category": "work_docs",
+      "rank": 7,
+      "vendor_official": true,
+      "beta": false,
+      "auth_kind": "oauth",
+      "logo": "notion.svg"
+    },
+    {
+      "id": "ao/slack-mcp",
+      "display_name": "Slack",
+      "summary": "Find the channel and post your agent's summary.",
+      "category": "communication",
+      "rank": 8,
+      "vendor_official": true,
+      "beta": false,
+      "auth_kind": "oauth",
+      "logo": "slack.svg"
+    },
+    {
+      "id": "ao/github-mcp",
+      "display_name": "GitHub",
+      "summary": "Search and open issues, read CODEOWNERS and commits.",
+      "category": "engineering",
+      "rank": 9,
+      "vendor_official": true,
+      "beta": false,
+      "auth_kind": "oauth",
+      "logo": "github.svg"
+    },
+    {
+      "id": "ao/sentry-mcp",
+      "display_name": "Sentry",
+      "summary": "Errors, stack traces and releases from Sentry, read-only.",
+      "category": "engineering",
+      "rank": 10,
+      "vendor_official": true,
+      "beta": false,
+      "auth_kind": "oauth",
+      "logo": "sentry.svg"
+    }
+  ],
+  "starters": [
+    {
+      "id": "triagem-jira-slack",
+      "display_name": "Jira + Slack ticket triage",
+      "summary": "Sorts new tickets by priority and component, suggests an owner, posts a summary in the channel and chases the SLA.",
+      "requires": ["ao/atlassian-mcp", "ao/slack-mcp"],
+      "status": "available"
+    },
+    {
+      "id": "sdr-hubspot",
+      "display_name": "SDR with HubSpot",
+      "summary": "Qualifies new leads, moves them through the funnel, creates the follow-up and alerts the salesperson.",
+      "requires": ["ao/hubspot-mcp", "ao/slack-mcp"],
+      "status": "available"
+    },
+    {
+      "id": "sdr-rdstation",
+      "display_name": "SDR with RD Station",
+      "summary": "The same SDR, on the CRM Brazilian sales teams use.",
+      "requires": ["ao/rdstation-mcp", "ao/slack-mcp"],
+      "status": "available"
+    },
+    {
+      "id": "cobranca-stripe",
+      "display_name": "Stripe billing and recovery",
+      "summary": "Lists overdue invoices, creates the payment link, logs it in the CRM and drafts the reminder; refunds only with your approval.",
+      "requires": ["ao/stripe-mcp", "ao/hubspot-mcp", "ao/slack-mcp"],
+      "status": "available"
+    },
+    {
+      "id": "operador-nuvemshop",
+      "display_name": "Nuvemshop store operator",
+      "summary": "Daily sales summary, low-stock alerts, and price and coupon changes with your approval.",
+      "requires": ["ao/nuvemshop-mcp", "ao/slack-mcp"],
+      "status": "available"
+    },
+    {
+      "id": "plantao-sentry-github",
+      "display_name": "Sentry to GitHub on-call",
+      "summary": "A new error becomes an issue with the stack, the release and the code owner, and the channel is notified.",
+      "requires": ["ao/sentry-mcp", "ao/github-mcp", "ao/slack-mcp"],
+      "status": "available"
+    }
+  ]
+}

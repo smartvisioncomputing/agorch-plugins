@@ -1,0 +1,58 @@
+# Official Stripe MCP server. Checked on 2026-10-01:
+#   doc:  https://docs.stripe.com/mcp and https://docs.stripe.com/keys#agent-keys
+# The tools are generic: stripe_api_read (GET) and stripe_api_write
+# (POST/PATCH/PUT/DELETE). Refunds and payouts also need Stripe's own human
+# approval (an approval URL and token, valid for 24 hours).
+stack "stripe" {
+  aicl_version = "1.1"
+  version      = "0.1.2"
+}
+
+authority "stripe_mcp" {
+  origins  = ["https://mcp.stripe.com"]
+  purposes = ["mcp_server"]
+}
+
+# Agent API key: a restricted key created with "Authorize agent access".
+# From 2026-10-31 the MCP server refuses secret keys and restricted keys
+# without the agent tag. The value lives in Agorch, never in this repository.
+# Stripe also offers OAuth with dynamic client registration; a sealed package
+# (ComponentPackage v1.1) does not carry a dynamic client, so it uses the key.
+secret_ref "stripe_agent_key" { name = "Stripe agent API key" }
+
+auth_provider "stripe_key" {
+  authorities = ["stripe_mcp"]
+  bearer { secret_ref = "stripe_agent_key" }
+}
+
+mcp_server "stripe_mcp" {
+  authority = "stripe_mcp"
+  url       = "https://mcp.stripe.com/" # the root with "/": an exact endpoint needs a path
+  auth      = "stripe_key"
+  allow     = ["stripe_api_read", "stripe_api_write"]
+}
+
+tool "stripe_api_read" {
+  name        = "Read Stripe data"
+  description = "GET on the Stripe API: invoices, customers, payment links."
+  side_effect = "read_only"
+  timeout_ms  = 30000
+  mcp {
+    server = "stripe_mcp"
+    tool   = "stripe_api_read"
+  }
+}
+
+# One tool covers payment links and refunds. destructive: it moves money and
+# takes DELETE, so every agent that uses it needs approval = "human_required".
+tool "stripe_api_write" {
+  name        = "Write to Stripe"
+  description = "POST/PATCH/DELETE on the Stripe API: payment links, refunds."
+  side_effect = "destructive"
+  idempotency = "not_idempotent" # a write: never retried automatically
+  timeout_ms  = 30000
+  mcp {
+    server = "stripe_mcp"
+    tool   = "stripe_api_write"
+  }
+}

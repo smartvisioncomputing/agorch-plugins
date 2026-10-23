@@ -1,0 +1,69 @@
+# Official monday.com MCP server. Checked on 2026-10-01:
+#   doc:    https://developer.monday.com/api-reference/docs/mondaycom-mcp
+#   tools:  https://developer.monday.com/api-reference/docs/platform-mcp-tools
+#   OAuth:  https://mcp.monday.com/.well-known/oauth-protected-resource/mcp
+#           -> AS https://auth.monday.com/mcp (authorize, token, register: DCR)
+# No starter uses monday.com yet: the allowlist is the minimum to read.
+# Every tool call counts toward the account's daily GraphQL API limit.
+stack "monday" {
+  aicl_version = "1.1"
+  version      = "0.1.3"
+}
+
+authority "monday_mcp" {
+  origins  = ["https://mcp.monday.com"]
+  purposes = ["mcp_server"]
+}
+
+authority "monday_auth" {
+  origins  = ["https://auth.monday.com"]
+  purposes = ["oauth_authorization", "oauth_token", "oauth_registration"]
+}
+
+# The server supports dynamic client registration, but a sealed package
+# (ComponentPackage v1.1) does not carry a dynamic client, so it declares
+# pre_registered + ao_managed: Agorch registers one client with the vendor and
+# uses it for every organization that connects.
+auth_provider "monday_oauth" {
+  authorities = ["monday_mcp"]
+  principal   = "organization" # one connection per Agorch organization
+  oauth2_authorization_code_pkce {
+    registration            = "pre_registered"
+    client_mode             = "ao_managed"
+    authorization_authority = "monday_auth"
+    authorization_path      = "/oauth2/authorize"
+    token_authority         = "monday_auth"
+    token_path              = "/oauth_ms/oauth/token"
+    issuer                  = "https://auth.monday.com/mcp" # RFC 8414, exactly as the authorization server publishes it
+    scopes                  = ["boards:read"]               # unverified: the metadata publishes no scopes_supported
+    redirect_uris           = ["https://app.agorch.ai/connection-oauth/callback"]
+  }
+}
+
+mcp_server "monday_mcp" {
+  authority = "monday_mcp"
+  url       = "https://mcp.monday.com/mcp"
+  auth      = "monday_oauth"
+  allow     = ["get_board_info", "get_board_items_page"]
+}
+
+tool "get_board_info" {
+  name        = "Read monday board"
+  description = "Metadata, columns, groups and views of a board."
+  side_effect = "read_only"
+  timeout_ms  = 30000
+  mcp {
+    server = "monday_mcp"
+    tool   = "get_board_info"
+  }
+}
+
+tool "get_board_items_page" {
+  name        = "List board items"
+  side_effect = "read_only"
+  timeout_ms  = 30000
+  mcp {
+    server = "monday_mcp"
+    tool   = "get_board_items_page"
+  }
+}

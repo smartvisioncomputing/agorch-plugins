@@ -1,0 +1,95 @@
+# Official GitHub remote MCP server. Checked on 2026-10-01:
+#   tools:  https://github.com/github/github-mcp-server (README)
+#   OAuth:  https://api.githubcopilot.com/.well-known/oauth-protected-resource/mcp/
+#           -> AS https://github.com/login/oauth (PKCE S256, no DCR)
+stack "github" {
+  aicl_version = "1.1"
+  version      = "0.1.3"
+}
+
+authority "github_mcp" {
+  origins  = ["https://api.githubcopilot.com"]
+  purposes = ["mcp_server"]
+}
+
+authority "github_auth" {
+  origins  = ["https://github.com"]
+  purposes = ["oauth_authorization", "oauth_token"]
+}
+
+# The organization's own GitHub App: an admin creates the app (permissions
+# Issues: read/write, Contents: read, Metadata: read), installs it on the
+# repositories and enters its client id and secret in Agorch. The values live
+# in Agorch, never in this repository.
+secret_ref "github_client_id" { name = "GitHub App client id" }
+secret_ref "github_client_secret" { name = "GitHub App client secret" }
+
+auth_provider "github_oauth" {
+  authorities = ["github_mcp"]
+  principal   = "organization" # user-to-server token of the person who connects, shared by the organization
+  oauth2_authorization_code_pkce {
+    registration            = "pre_registered"
+    client_mode             = "organization_byo_client"
+    client_id_ref           = "github_client_id"
+    client_secret_ref       = "github_client_secret"
+    authorization_authority = "github_auth"
+    authorization_path      = "/login/oauth/authorize"
+    token_authority         = "github_auth"
+    token_path              = "/login/oauth/access_token"
+    issuer                  = "https://github.com/login/oauth" # RFC 8414, exactly as the authorization server publishes it
+    # A GitHub App ignores scope: the app's permissions (above) apply. "repo"
+    # only counts with an OAuth App; it is the scope the 4 tools need.
+    scopes        = ["repo"]
+    redirect_uris = ["https://app.agorch.ai/connection-oauth/callback"]
+  }
+}
+
+mcp_server "github_mcp" {
+  authority = "github_mcp"
+  url       = "https://api.githubcopilot.com/mcp/"
+  auth      = "github_oauth"
+  allow     = ["search_issues", "get_file_contents", "list_commits", "issue_write"]
+}
+
+tool "github_search_issues" {
+  name        = "Search GitHub issues"
+  side_effect = "read_only"
+  timeout_ms  = 30000
+  mcp {
+    server = "github_mcp"
+    tool   = "search_issues"
+  }
+}
+
+tool "get_file_contents" {
+  name        = "Read repository file"
+  description = "Contents of a file, for example CODEOWNERS."
+  side_effect = "read_only"
+  timeout_ms  = 30000
+  mcp {
+    server = "github_mcp"
+    tool   = "get_file_contents"
+  }
+}
+
+tool "list_commits" {
+  name        = "List commits"
+  side_effect = "read_only"
+  timeout_ms  = 30000
+  mcp {
+    server = "github_mcp"
+    tool   = "list_commits"
+  }
+}
+
+# method = "create" | "update". No delete.
+tool "issue_write" {
+  name        = "Open or update GitHub issue"
+  side_effect = "mutating"
+  idempotency = "not_idempotent" # a write: never retried automatically
+  timeout_ms  = 30000
+  mcp {
+    server = "github_mcp"
+    tool   = "issue_write"
+  }
+}

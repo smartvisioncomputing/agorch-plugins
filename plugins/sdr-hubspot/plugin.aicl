@@ -1,0 +1,34 @@
+plugin "sdr-hubspot" {
+  aicl_version  = "1.1"
+  namespace     = "ao"
+  version       = "0.1.1"
+  publisher     = "publisher:ao"
+  description   = "SDR com HubSpot: qualifica leads novos, move no funil, cria follow-up e avisa o vendedor no Slack."
+  license       = "Apache-2.0"
+  release_notes = "Pins the connector releases with English tool names and descriptions. The skill, scenarios and agents are unchanged."
+  stack         = "./stack"
+
+  exports {
+    agents = ["sdr"]
+    skills = ["qualificacao"]
+  }
+
+  requires "hubspot" {
+    package = "ao/hubspot-mcp"
+    version = "^0.1.0"
+    tools   = ["search_crm_objects", "get_crm_objects", "manage_crm_objects", "search_owners"]
+    reason  = "Ler leads e negócios, gravar a qualificação, mover a etapa e criar a tarefa de follow-up"
+  }
+
+  requires "slack" {
+    package = "ao/slack-mcp"
+    version = "^0.1.0"
+    tools   = ["slack_search_channels", "slack_send_message"]
+    reason  = "Avisar o vendedor dono do lead no canal de vendas"
+  }
+
+  permissions {
+    side_effects = ["read_only", "mutating"]
+    data_sent    = ["lead_name", "lead_email", "lead_company", "deal_stage", "slack_message_text"]
+  }
+}

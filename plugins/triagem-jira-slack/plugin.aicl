@@ -1,0 +1,40 @@
+plugin "triagem-jira-slack" {
+  aicl_version  = "1.1"
+  namespace     = "ao"
+  version       = "0.1.1"
+  publisher     = "publisher:ao"
+  description   = "Triagem de tickets Jira + Slack: classifica, sugere responsável, resume no canal e cobra SLA."
+  license       = "Apache-2.0"
+  release_notes = "Pins the connector releases with English tool names and descriptions. The skill, scenarios and agents are unchanged."
+  stack         = "./stack"
+
+  exports {
+    agents = ["triador"]
+    skills = ["triagem"]
+  }
+
+  requires "atlassian" {
+    package = "ao/atlassian-mcp"
+    version = "^0.1.0"
+    tools = [
+      "get_accessible_atlassian_resources",
+      "search_jira_issues_using_jql",
+      "get_jira_issue",
+      "edit_jira_issue",
+      "add_or_edit_jira_issue_comment",
+    ]
+    reason = "Ler os tickets novos, gravar prioridade, componente e responsável e comentar a triagem"
+  }
+
+  requires "slack" {
+    package = "ao/slack-mcp"
+    version = "^0.1.0"
+    tools   = ["slack_search_channels", "slack_send_message"]
+    reason  = "Postar o resumo da triagem e a cobrança de SLA no canal do time"
+  }
+
+  permissions {
+    side_effects = ["read_only", "mutating"]
+    data_sent    = ["jira_issue_fields", "jira_comment_text", "slack_message_text"]
+  }
+}

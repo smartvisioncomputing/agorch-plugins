@@ -1,0 +1,36 @@
+plugin "atlassian" {
+  aicl_version  = "1.1"
+  namespace     = "ao"
+  version       = "0.1.4"
+  publisher     = "publisher:ao"
+  description   = "Atlassian Rovo MCP (official): search, read, create, edit and comment on Jira issues."
+  license       = "Apache-2.0"
+  stack         = "./stack"
+  readme        = "./README.md"
+  release_notes = "Adds the Apache-2.0 license, an English README, English tool names and descriptions, plain-language descriptions of the requested permissions and the source commit this release was built from. Tool behavior, permissions and endpoints are unchanged."
+  scope_labels = {
+    "search:jira:agent-interface" = "Search Jira issues with JQL"
+    "read:jira:agent-interface"   = "Read Jira issues and the sites you can access"
+    "write:jira:agent-interface"  = "Create, edit and comment on Jira issues"
+  }
+  source {
+    repository = "https://github.com/smartvisioncomputing/agorch-plugins"
+  }
+
+  exports {
+    tools = [
+      "get_accessible_atlassian_resources",
+      "search_jira_issues_using_jql",
+      "get_jira_issue",
+      "create_jira_issue",
+      "edit_jira_issue",
+      "add_or_edit_jira_issue_comment",
+    ]
+  }
+
+  permissions {
+    authorities  = ["atlassian_mcp"]
+    side_effects = ["read_only", "mutating"]
+    data_sent    = ["jira_jql", "jira_issue_fields", "jira_comment_text"]
+  }
+}

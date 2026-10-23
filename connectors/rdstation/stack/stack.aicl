@@ -1,0 +1,86 @@
+# Official RD Station MCP server. Source: https://www.rdstation.com/mcp-rd-station/
+# (checked on 2026-10-01): OAuth 2.0 at https://mcp.rdstationmentor.com/.
+# unverified: on 2026-10-01 that host serves the "MCP Catalog" (a web app with
+# sign-in, where the customer creates an authentication token), with no public
+# OAuth metadata. Server URL, transport, OAuth endpoints, scopes and tool names
+# are not public. Do not use api.mcp.ai/p_rdstation: it is a third party.
+stack "rdstation" {
+  aicl_version = "1.1"
+  version      = "0.1.2"
+}
+
+authority "rdstation_mcp" {
+  origins  = ["https://mcp.rdstationmentor.com"]
+  purposes = ["mcp_server", "oauth_authorization", "oauth_token"]
+}
+
+# DCR unverified: Agorch registers one client with RD Station (ao_managed).
+auth_provider "rdstation_oauth" {
+  authorities = ["rdstation_mcp"]
+  principal   = "organization" # the RD Station account belongs to the organization
+  oauth2_authorization_code_pkce {
+    registration            = "pre_registered"
+    client_mode             = "ao_managed"
+    authorization_authority = "rdstation_mcp"
+    authorization_path      = "/oauth/authorize" # unverified
+    token_authority         = "rdstation_mcp"
+    token_path              = "/oauth/token"       # unverified
+    scopes                  = ["crm", "marketing"] # unverified
+    redirect_uris           = ["https://app.agorch.ai/connection-oauth/callback"]
+  }
+}
+
+mcp_server "rdstation_mcp" {
+  authority = "rdstation_mcp"
+  url       = "https://mcp.rdstationmentor.com/" # unverified; no /mcp suffix: exact URL
+  auth      = "rdstation_oauth"
+  allow = [
+    "search_contacts", # unverified
+    "update_contact",  # unverified
+    "move_deal_stage", # unverified
+    "create_task",     # unverified
+  ]
+}
+
+tool "search_contacts" {
+  name        = "Search contacts and leads"
+  side_effect = "read_only"
+  timeout_ms  = 30000
+  mcp {
+    server = "rdstation_mcp"
+    tool   = "search_contacts" # unverified
+  }
+}
+
+tool "update_contact" {
+  name        = "Update contact"
+  side_effect = "mutating"
+  idempotency = "not_idempotent" # a write: never retried automatically
+  timeout_ms  = 30000
+  mcp {
+    server = "rdstation_mcp"
+    tool   = "update_contact" # unverified
+  }
+}
+
+tool "move_deal_stage" {
+  name        = "Move deal to another stage"
+  side_effect = "mutating"
+  idempotency = "not_idempotent" # a write: never retried automatically
+  timeout_ms  = 30000
+  mcp {
+    server = "rdstation_mcp"
+    tool   = "move_deal_stage" # unverified
+  }
+}
+
+tool "create_task" {
+  name        = "Create follow-up task"
+  side_effect = "mutating"
+  idempotency = "not_idempotent" # a write: never retried automatically
+  timeout_ms  = 30000
+  mcp {
+    server = "rdstation_mcp"
+    tool   = "create_task" # unverified
+  }
+}

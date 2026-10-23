@@ -1,0 +1,28 @@
+plugin "rdstation" {
+  aicl_version  = "1.1"
+  namespace     = "ao"
+  version       = "0.1.2"
+  publisher     = "publisher:ao"
+  description   = "RD Station MCP (official): contacts, sales funnel and tasks in RD Station CRM and Marketing."
+  license       = "Apache-2.0"
+  stack         = "./stack"
+  readme        = "./README.md"
+  release_notes = "Adds the Apache-2.0 license, an English README, English tool names and descriptions, plain-language descriptions of the requested permissions and the source commit this release was built from. Tool behavior, permissions and endpoints are unchanged."
+  scope_labels = {
+    "crm"       = "Read and update contacts, deals and tasks in RD Station CRM"
+    "marketing" = "Read leads and conversions in RD Station Marketing"
+  }
+  source {
+    repository = "https://github.com/smartvisioncomputing/agorch-plugins"
+  }
+
+  exports {
+    tools = ["search_contacts", "update_contact", "move_deal_stage", "create_task"]
+  }
+
+  permissions {
+    authorities  = ["rdstation_mcp"]
+    side_effects = ["read_only", "mutating"]
+    data_sent    = ["contact_fields", "deal_stage", "task_text"]
+  }
+}

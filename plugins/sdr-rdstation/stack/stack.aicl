@@ -1,0 +1,71 @@
+stack "sdr_rdstation" {
+  aicl_version = "1.1"
+  version      = "0.1.1"
+}
+
+skill "qualificacao" {
+  instructions = file("skills/qualificacao/SKILL.md")
+}
+
+agent "sdr" {
+  name        = "SDR RD Station"
+  description = "Qualifica leads novos no RD Station e passa para o vendedor."
+  instruction = "Você é o SDR do time comercial. Responda em português, curto. Use só dados do RD Station; nunca invente lead, empresa, cargo ou valor."
+  skills      = ["qualificacao"]
+
+  model {
+    requires {
+      capabilities       = ["tool_calling"]
+      min_context_window = 128000
+    }
+  }
+
+  tool "rdstation:search_contacts" {}
+  tool "rdstation:update_contact" { approval = "human_required" }
+  tool "rdstation:move_deal_stage" { approval = "human_required" }
+  tool "rdstation:create_task" { approval = "human_required" }
+  tool "slack:slack_search_channels" {}
+  tool "slack:slack_send_message" { approval = "human_required" }
+
+  limits {
+    max_turns           = 20
+    max_tool_calls      = 40
+    tool_parallel_limit = 4
+  }
+}
+
+scenario "qualifica_leads_novos" {
+  agent = "sdr"
+  input = "Qualifique as conversões de hoje no RD Station, mova os qualificados no funil, crie o follow-up e avise o vendedor no #vendas."
+  expect {
+    tools_called = [
+      "rdstation:search_contacts",
+      "rdstation:move_deal_stage",
+      "rdstation:create_task",
+      "slack:slack_send_message",
+    ]
+  }
+}
+
+scenario "so_relatorio" {
+  agent = "sdr"
+  input = "Me liste os leads de hoje com a nota de qualificação que você daria. Não grave nada no RD."
+  expect {
+    tools_called = ["rdstation:search_contacts"]
+    no_tool = [
+      "rdstation:update_contact",
+      "rdstation:move_deal_stage",
+      "rdstation:create_task",
+      "slack:slack_send_message",
+    ]
+  }
+}
+
+scenario "lead_sem_dados" {
+  agent = "sdr"
+  input = "Qualifique o lead lead-sem-email@exemplo.invalid, que não tem empresa nem telefone."
+  expect {
+    tools_called = ["rdstation:search_contacts"]
+    no_tool      = ["rdstation:move_deal_stage", "slack:slack_send_message"]
+  }
+}

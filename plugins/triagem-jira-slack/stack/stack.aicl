@@ -1,0 +1,71 @@
+stack "triagem_jira_slack" {
+  aicl_version = "1.1"
+  version      = "0.1.1"
+}
+
+skill "triagem" {
+  instructions = file("skills/triagem/SKILL.md")
+}
+
+agent "triador" {
+  name        = "Triador de tickets"
+  description = "Tria os tickets novos do Jira e resume no Slack."
+  instruction = "Você é o triador de tickets do time. Responda em português, curto. Use só dados das tools; nunca invente ticket, pessoa ou prazo."
+  skills      = ["triagem"]
+
+  model {
+    requires {
+      capabilities       = ["tool_calling"]
+      min_context_window = 128000
+    }
+  }
+
+  tool "atlassian:get_accessible_atlassian_resources" {}
+  tool "atlassian:search_jira_issues_using_jql" {}
+  tool "atlassian:get_jira_issue" {}
+  tool "atlassian:edit_jira_issue" { approval = "human_required" }
+  tool "atlassian:add_or_edit_jira_issue_comment" { approval = "human_required" }
+  tool "slack:slack_search_channels" {}
+  tool "slack:slack_send_message" { approval = "human_required" }
+
+  limits {
+    max_turns           = 20
+    max_tool_calls      = 40
+    tool_parallel_limit = 4
+  }
+}
+
+scenario "triagem_e_resumo" {
+  agent = "triador"
+  input = "Faça a triagem dos tickets criados nas últimas 24 horas no projeto SUP e poste o resumo no canal #suporte-eng."
+  expect {
+    tools_called = [
+      "atlassian:search_jira_issues_using_jql",
+      "slack:slack_send_message",
+    ]
+  }
+}
+
+scenario "consulta_sem_alterar" {
+  agent = "triador"
+  input = "Só me diga quais tickets abertos do projeto SUP estão sem prioridade. Não altere nada e não poste no Slack."
+  expect {
+    tools_called = ["atlassian:search_jira_issues_using_jql"]
+    no_tool = [
+      "atlassian:edit_jira_issue",
+      "atlassian:add_or_edit_jira_issue_comment",
+      "slack:slack_send_message",
+    ]
+  }
+}
+
+scenario "cobranca_sla" {
+  agent = "triador"
+  input = "Quais tickets Highest do projeto SUP estão abertos há mais de 4 horas sem responsável? Cobre o SLA no #suporte-eng."
+  expect {
+    tools_called = [
+      "atlassian:search_jira_issues_using_jql",
+      "slack:slack_send_message",
+    ]
+  }
+}

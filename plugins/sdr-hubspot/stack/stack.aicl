@@ -1,0 +1,65 @@
+stack "sdr_hubspot" {
+  aicl_version = "1.1"
+  version      = "0.1.1"
+}
+
+skill "qualificacao" {
+  instructions = file("skills/qualificacao/SKILL.md")
+}
+
+agent "sdr" {
+  name        = "SDR HubSpot"
+  description = "Qualifica leads novos no HubSpot e passa para o vendedor."
+  instruction = "Você é o SDR do time comercial. Responda em português, curto. Use só dados do CRM; nunca invente lead, empresa, cargo ou valor."
+  skills      = ["qualificacao"]
+
+  model {
+    requires {
+      capabilities       = ["tool_calling"]
+      min_context_window = 128000
+    }
+  }
+
+  tool "hubspot:search_crm_objects" {}
+  tool "hubspot:get_crm_objects" {}
+  tool "hubspot:search_owners" {}
+  tool "hubspot:manage_crm_objects" { approval = "human_required" }
+  tool "slack:slack_search_channels" {}
+  tool "slack:slack_send_message" { approval = "human_required" }
+
+  limits {
+    max_turns           = 20
+    max_tool_calls      = 40
+    tool_parallel_limit = 4
+  }
+}
+
+scenario "qualifica_leads_novos" {
+  agent = "sdr"
+  input = "Qualifique os contatos criados hoje no HubSpot, crie o follow-up dos qualificados e avise o vendedor no #vendas."
+  expect {
+    tools_called = [
+      "hubspot:search_crm_objects",
+      "hubspot:manage_crm_objects",
+      "slack:slack_send_message",
+    ]
+  }
+}
+
+scenario "so_relatorio" {
+  agent = "sdr"
+  input = "Me liste os leads de hoje com a nota de qualificação que você daria. Não grave nada no CRM."
+  expect {
+    tools_called = ["hubspot:search_crm_objects"]
+    no_tool      = ["hubspot:manage_crm_objects", "slack:slack_send_message"]
+  }
+}
+
+scenario "lead_sem_dados" {
+  agent = "sdr"
+  input = "Qualifique o lead lead-sem-email@exemplo.invalid, que não tem empresa nem telefone."
+  expect {
+    tools_called = ["hubspot:search_crm_objects"]
+    no_tool      = ["slack:slack_send_message"]
+  }
+}

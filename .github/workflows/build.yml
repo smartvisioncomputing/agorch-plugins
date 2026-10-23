@@ -1,0 +1,76 @@
+name: build
+
+# The full check: scripts/check.sh rebuilds every sealed package in index/
+# from the commit it names and compares the bytes (license, scopes and tools
+# included), validates and builds every plugin, and compares starters/. A pull
+# request that only ran the static check could merge a hand-edited index/.
+#
+# It needs the aicl compiler, whose repository is still private.
+# AICL_REPO_TOKEN is a fine-grained token with Contents: read on
+# smartvisioncomputing/aicl only; checkout keeps it out of the git config, and
+# no later step sees it. A pull request from a fork gets no secret: then the
+# job fails when the pull request touches what the full check covers
+# (index/, starters/, connectors/, plugins/, scripts/, .github/,
+# catalog.json), so sealed bytes never merge unchecked, and passes with a
+# warning otherwise (documentation). A push to main without the secret warns.
+# Never switch this to pull_request_target.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # check.sh rebuilds each connector from the commit it names
+          persist-credentials: false
+
+      - name: Look for AICL_REPO_TOKEN
+        id: token
+        env:
+          AICL_REPO_TOKEN: ${{ secrets.AICL_REPO_TOKEN }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ -n "$AICL_REPO_TOKEN" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -n "$BASE_SHA" ]; then
+            changed="$(git diff --name-only "$BASE_SHA" HEAD)" || exit 1
+            if printf '%s\n' "$changed" | grep -qE '^(index|starters|connectors|plugins|scripts|\.github)/|^catalog\.json$'; then
+              echo "::error title=Full check required::This pull request changes sealed packages or what builds or checks them, and the full check cannot run without AICL_REPO_TOKEN (a fork gets no secret). A maintainer pushes it to a branch of this repository to run the check."
+              exit 1
+            fi
+          fi
+          echo "::warning title=Full check skipped::AICL_REPO_TOKEN is not set, so the aicl compiler cannot be fetched. Nothing the full check covers changed, or this is a push; the static workflow still ran."
+
+      - if: steps.token.outputs.present == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: smartvisioncomputing/aicl
+          ref: pilot-ready
+          token: ${{ secrets.AICL_REPO_TOKEN }}
+          path: .aicl-src
+          persist-credentials: false
+
+      - if: steps.token.outputs.present == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: .aicl-src/go.mod
+          cache-dependency-path: .aicl-src/go.sum
+
+      - name: Build aicl
+        if: steps.token.outputs.present == 'true'
+        working-directory: .aicl-src
+        run: GOWORK=off go build -o "${RUNNER_TEMP}/aicl" ./cmd/aicl
+
+      # The aicl checkout is ignored (.gitignore), so the tree stays clean.
+      - name: Full check
+        if: steps.token.outputs.present == 'true'
+        run: AICL="${RUNNER_TEMP}/aicl" scripts/check.sh

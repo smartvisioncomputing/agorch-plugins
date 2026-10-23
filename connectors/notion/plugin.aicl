@@ -1,0 +1,27 @@
+plugin "notion" {
+  aicl_version  = "1.1"
+  namespace     = "ao"
+  version       = "0.1.3"
+  publisher     = "publisher:ao"
+  description   = "Notion MCP (official): search and read pages and databases in the workspace."
+  license       = "Apache-2.0"
+  stack         = "./stack"
+  readme        = "./README.md"
+  release_notes = "Adds the Apache-2.0 license, an English README, English tool names and descriptions, plain-language descriptions of the requested permissions and the source commit this release was built from. Tool behavior, permissions and endpoints are unchanged."
+  scope_labels = {
+    "default" = "Search and read the pages you share during the connection"
+  }
+  source {
+    repository = "https://github.com/smartvisioncomputing/agorch-plugins"
+  }
+
+  exports {
+    tools = ["notion_search", "notion_fetch"]
+  }
+
+  permissions {
+    authorities  = ["notion_mcp"]
+    side_effects = ["read_only"]
+    data_sent    = ["notion_query", "notion_page_id"]
+  }
+}

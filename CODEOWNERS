@@ -1,0 +1,7 @@
+# Every pull request needs a review from a maintainer.
+*                  @mpcabral
+# Connectors touch auth, scopes and the tool allowlist.
+/connectors/       @mpcabral
+/index/            @mpcabral
+/.github/          @mpcabral
+/scripts/          @mpcabral

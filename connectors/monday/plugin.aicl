@@ -1,0 +1,27 @@
+plugin "monday" {
+  aicl_version  = "1.1"
+  namespace     = "ao"
+  version       = "0.1.3"
+  publisher     = "publisher:ao"
+  description   = "monday.com MCP (official): read boards, columns and items."
+  license       = "Apache-2.0"
+  stack         = "./stack"
+  readme        = "./README.md"
+  release_notes = "Adds the Apache-2.0 license, an English README, English tool names and descriptions, plain-language descriptions of the requested permissions and the source commit this release was built from. Tool behavior, permissions and endpoints are unchanged."
+  scope_labels = {
+    "boards:read" = "Read your boards, their columns and items"
+  }
+  source {
+    repository = "https://github.com/smartvisioncomputing/agorch-plugins"
+  }
+
+  exports {
+    tools = ["get_board_info", "get_board_items_page"]
+  }
+
+  permissions {
+    authorities  = ["monday_mcp"]
+    side_effects = ["read_only"]
+    data_sent    = ["board_id", "item_filters"]
+  }
+}
