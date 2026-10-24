@@ -6,8 +6,8 @@
       "package": {
         "namespace": "ao",
         "package_id": "hubspot-mcp",
-        "version": "0.1.3",
-        "digest": "sha256:409767032267a3c41a8c94dfc8095a3a85b13a77d0b6acc4b4bf3dfbcbb3a346"
+        "version": "0.1.4",
+        "digest": "sha256:3f79c09a4102e28a0e8f17798ee64b780c11c06a88a8406ef0ac7a7bce50506a"
       },
       "depth": 1,
       "direct": true,
