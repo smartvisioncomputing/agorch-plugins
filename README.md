@@ -80,7 +80,7 @@ Release tags follow `connectors/<id>@<version>` or `plugins/<id>@<version>`.
 
 ## Publishing
 
-`scripts/publish.sh` takes `index/` and then `starters/` to an Agorch registry through the ordinary publisher path: publisher account `publisher:ao`, the `first_party` claim on the `ao` namespace, a signing key, the signed artifact, listing, release, automated checks, platform review and the `stable` channel. It then applies the listing fields from `catalog.json` (`category`, `rank`, `vendor_official`, `beta`). Every step reads the registry's state first, so a second run changes nothing. A starter is published only after every connector it requires is on the stable channel; otherwise it is skipped and reported (the run still publishes the others). Starters get no category, rank or badges from `catalog.json`: the API defaults apply.
+`scripts/publish.sh` takes `index/` to an Agorch registry through the ordinary publisher path: publisher account `publisher:ao`, the `first_party` claim on the `ao` namespace, a signing key, the signed artifact, listing, release, automated checks, platform review and the `stable` channel. It then applies the listing fields from `catalog.json` (`category`, `rank`, `vendor_official`, `beta`). Every step reads the registry's state first, so a second run changes nothing. Starters are not published to the registry.
 
 ```sh
 export AGORCH_API=https://<api>                         # API origin, no trailing slash
