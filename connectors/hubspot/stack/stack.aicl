@@ -4,7 +4,7 @@
 #           (no registration_endpoint: no DCR; needs an "MCP auth app")
 stack "hubspot" {
   aicl_version = "1.1"
-  version      = "0.1.3"
+  version      = "0.1.4"
 }
 
 # One origin for the MCP server and for the MCP auth app's OAuth.
@@ -23,15 +23,19 @@ auth_provider "hubspot_oauth" {
   authorities = ["hubspot_mcp"]
   principal   = "organization" # authorize/user: the person who connects authorizes for the organization
   oauth2_authorization_code_pkce {
-    registration            = "pre_registered"
-    client_mode             = "organization_byo_client"
-    client_id_ref           = "hubspot_client_id"
-    client_secret_ref       = "hubspot_client_secret" # client_secret_post
-    authorization_authority = "hubspot_mcp"
-    authorization_path      = "/oauth/authorize/user"
-    token_authority         = "hubspot_mcp"
-    token_path              = "/oauth/v3/token"
-    issuer                  = "https://mcp.hubspot.com" # RFC 8414, exactly as the authorization server publishes it
+    registration      = "pre_registered"
+    client_mode       = "organization_byo_client"
+    client_id_ref     = "hubspot_client_id"
+    client_secret_ref = "hubspot_client_secret"
+    # The authorization server publishes token_endpoint_auth_methods_supported
+    # = ["client_secret_post"]: the client id and secret go in the token
+    # request body, never in an Authorization: Basic header.
+    token_endpoint_auth_method = "client_secret_post"
+    authorization_authority    = "hubspot_mcp"
+    authorization_path         = "/oauth/authorize/user"
+    token_authority            = "hubspot_mcp"
+    token_path                 = "/oauth/v3/token"
+    issuer                     = "https://mcp.hubspot.com" # RFC 8414, exactly as the authorization server publishes it
     # HubSpot grants MCP access by the installed tools and publishes an empty
     # scopes_supported: no scope is requested (warning auth.scopes_empty).
     scopes        = []

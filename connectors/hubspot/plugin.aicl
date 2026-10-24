@@ -1,13 +1,13 @@
 plugin "hubspot" {
   aicl_version  = "1.1"
   namespace     = "ao"
-  version       = "0.1.3"
+  version       = "0.1.4"
   publisher     = "publisher:ao"
   description   = "HubSpot MCP (official): search, read and write CRM records and find the owning sales rep."
   license       = "Apache-2.0"
   stack         = "./stack"
   readme        = "./README.md"
-  release_notes = "Adds the Apache-2.0 license, an English README, English tool names and descriptions, plain-language descriptions of the requested permissions and the source commit this release was built from. Tool behavior, permissions and endpoints are unchanged."
+  release_notes = "Signs the token endpoint client authentication as client_secret_post, the only method the HubSpot MCP authorization server publishes: the client id and secret go in the token request body instead of an HTTP Basic header, for the code exchange and every refresh. Tools, permissions, scopes and endpoints are unchanged."
   source {
     repository = "https://github.com/smartvisioncomputing/agorch-plugins"
   }
