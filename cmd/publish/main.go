@@ -65,7 +65,19 @@ type publisher struct {
 	pid, ns, owner, keyID           string
 	signer                          signer.Signer
 	changes                         int
-	pending, blocked                []string
+	pending, blocked, skipped       []string
+	ready                           map[string]bool // ns/id of every package that reached the stable channel in this run
+}
+
+// missing lists the required packages that are not ready: a starter is only
+// published once every connector it requires is on the stable channel.
+func missing(requires []string, ready map[string]bool) (out []string) {
+	for _, r := range requires {
+		if !ready[r] {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 func (p *publisher) do(method, path, tok, key, ifMatch string, body any) (reply, error) {
@@ -262,7 +274,7 @@ func (p *publisher) platformKeys() error {
 
 type pkgInfo struct{ ns, id, version, digest string }
 
-func (p *publisher) publish(file string, present obj) error {
+func (p *publisher) publish(file string, present obj, starter bool) error {
 	canonical, err := os.ReadFile(file)
 	if err != nil {
 		return err
@@ -309,8 +321,12 @@ func (p *publisher) publish(file string, present obj) error {
 	// 2. listing: the genesis body is constant (only the package identity), so its
 	// idempotency key always replays to the same listing id; the presentation is
 	// then brought up to catalog.json by PATCH, only where it differs.
+	summary := "Agorch first-party connector."
+	if starter { // connectors keep their genesis body: the idempotency key replays it
+		summary = "Agorch first-party starter agent."
+	}
 	c, err := p.must("POST", acct+"/listings", p.publisherTok, "seed-listing-v1-"+ref, "", obj{
-		"namespace": k.ns, "package_id": k.id, "display_name": k.id, "summary": "Agorch first-party connector.",
+		"namespace": k.ns, "package_id": k.id, "display_name": k.id, "summary": summary,
 		"support_url": "https://agorch.ai", "documentation_url": "https://agorch.ai",
 		"license_spdx": "Apache-2.0", "hosting": "publisher_hosted"}, 201)
 	if err != nil {
@@ -402,11 +418,34 @@ func (p *publisher) publish(file string, present obj) error {
 		return fmt.Errorf("%s: release is %q, expected approved", ref, s)
 	}
 
+	p.ready[ref] = true
+	if starter { // catalog.json gives starters no category/rank/badges: the API defaults apply
+		return nil
+	}
+
 	// 4. presentation fields owned by the catalog (category, rank, vendor_official,
 	// beta): tolerant. An API that does not know them yet is reported, not fatal.
 	return p.presentation(lpath, ref, obj{
 		"category": present["category"], "rank": present["rank"],
 		"vendor_official": present["vendor_official"], "beta": present["beta"]})
+}
+
+// packageRef is "namespace/package_id" of a sealed package file.
+func packageRef(file string) (string, error) {
+	b, err := os.ReadFile(file)
+	if err != nil {
+		return "", err
+	}
+	var id struct {
+		Package struct {
+			Namespace string `json:"namespace"`
+			PackageID string `json:"package_id"`
+		} `json:"package"`
+	}
+	if err := json.Unmarshal(b, &id); err != nil {
+		return "", fmt.Errorf("%s: %w", file, err)
+	}
+	return id.Package.Namespace + "/" + id.Package.PackageID, nil
 }
 
 func sameFields(have, want obj) bool {
@@ -450,16 +489,17 @@ func (p *publisher) presentation(lpath, ref string, want obj) error {
 }
 
 func main() {
-	indexDir := flag.String("index", "index", "directory with the sealed packages")
+	indexDir := flag.String("index", "index", "directory with the sealed connector packages")
+	startersDir := flag.String("starters", "starters", "directory with the sealed starter packages (published after the connectors; \"\" skips them)")
 	catalogFile := flag.String("catalog", "catalog.json", "catalog.json with the presentation fields")
 	flag.Parse()
-	if err := run(*indexDir, *catalogFile); err != nil {
+	if err := run(*indexDir, *startersDir, *catalogFile); err != nil {
 		fmt.Fprintln(os.Stderr, "publish:", err)
 		os.Exit(1)
 	}
 }
 
-func run(indexDir, catalogFile string) error {
+func run(indexDir, startersDir, catalogFile string) error {
 	need := func(k string) string {
 		v := strings.TrimSpace(os.Getenv(k))
 		if v == "" {
@@ -480,6 +520,7 @@ func run(indexDir, catalogFile string) error {
 		Namespace   string `json:"namespace"`
 		PublisherID string `json:"publisher_id"`
 		Connectors  []obj  `json:"connectors"`
+		Starters    []obj  `json:"starters"`
 	}
 	raw, err := os.ReadFile(catalogFile)
 	if err != nil {
@@ -490,7 +531,7 @@ func run(indexDir, catalogFile string) error {
 	}
 	p := &publisher{
 		base: strings.TrimRight(need("AGORCH_API"), "/"), publisherTok: need("AGORCH_PUBLISHER_TOKEN"), platformTok: need("AGORCH_PLATFORM_TOKEN"),
-		pid: cat.PublisherID, ns: cat.Namespace, owner: os.Getenv("AGORCH_OWNER_EMAIL"), keyID: os.Getenv("AGORCH_PUBLISHER_KEY_ID"),
+		ready: map[string]bool{}, pid: cat.PublisherID, ns: cat.Namespace, owner: os.Getenv("AGORCH_OWNER_EMAIL"), keyID: os.Getenv("AGORCH_PUBLISHER_KEY_ID"),
 	}
 	if p.keyID == "" {
 		p.keyID = "agorch-publisher-1"
@@ -508,6 +549,15 @@ func run(indexDir, catalogFile string) error {
 	for _, c := range cat.Connectors {
 		byID[str(c, "id")] = c
 	}
+	starters := map[string]obj{}
+	for _, c := range cat.Starters {
+		starters[cat.Namespace+"/"+str(c, "id")] = c
+	}
+	var starterFiles []string
+	if startersDir != "" {
+		starterFiles, _ = filepath.Glob(filepath.Join(startersDir, "*.json"))
+		sort.Strings(starterFiles)
+	}
 
 	p.logf("bootstrap %s / %s", p.pid, p.ns)
 	if err := p.bootstrap(); err != nil {
@@ -517,22 +567,44 @@ func run(indexDir, catalogFile string) error {
 		return err
 	}
 	for _, f := range files {
-		var id struct {
-			Package struct {
-				Namespace string `json:"namespace"`
-				PackageID string `json:"package_id"`
-			} `json:"package"`
-		}
-		b, err := os.ReadFile(f)
+		ref, err := packageRef(f)
 		if err != nil {
 			return err
 		}
-		_ = json.Unmarshal(b, &id)
-		present, ok := byID[id.Package.Namespace+"/"+id.Package.PackageID]
+		present, ok := byID[ref]
 		if !ok {
 			return fmt.Errorf("%s is not in %s (run scripts/check.sh)", f, catalogFile)
 		}
-		if err := p.publish(f, present); err != nil {
+		if err := p.publish(f, present, false); err != nil {
+			return err
+		}
+	}
+	// Starters come after the connectors they lock. One whose connector is not
+	// on the stable channel (blocked, failed) is skipped and reported; the rest go on.
+	for _, f := range starterFiles {
+		ref, err := packageRef(f)
+		if err != nil {
+			return err
+		}
+		present, ok := starters[ref]
+		if !ok {
+			return fmt.Errorf("%s is not in %s starters (run scripts/check.sh)", f, catalogFile)
+		}
+		if str(present, "status") != "available" {
+			p.logf("%s skipped: status %s", ref, str(present, "status"))
+			continue
+		}
+		var requires []string
+		rs, _ := present["requires"].([]any)
+		for _, r := range rs {
+			requires = append(requires, fmt.Sprint(r))
+		}
+		if m := missing(requires, p.ready); len(m) > 0 {
+			p.skipped = append(p.skipped, ref)
+			p.logf("%s skipped: required %s not on the stable channel", ref, strings.Join(m, ", "))
+			continue
+		}
+		if err := p.publish(f, present, true); err != nil {
 			return err
 		}
 	}
@@ -543,6 +615,9 @@ func run(indexDir, catalogFile string) error {
 	}
 	if len(p.pending) > 0 {
 		p.logf("presentation fields pending on the API for %d packages", len(p.pending))
+	}
+	if len(p.skipped) > 0 {
+		p.logf("starters skipped for want of a published connector: %s", strings.Join(p.skipped, ", "))
 	}
 	if len(p.blocked) > 0 {
 		return fmt.Errorf("%d of %d packages are blocked by the automated checks: %s", len(p.blocked), len(files), strings.Join(p.blocked, ", "))

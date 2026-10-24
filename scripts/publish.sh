@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Signs the packages in index/ and publishes them to an Agorch registry through
+# Signs the packages in index/ (then the starters in starters/) and publishes them to an Agorch registry through
 # the ordinary publisher path (account, claim, key, artifact, listing, release,
 # checks, review, stable channel), then applies the presentation fields from
 # catalog.json. Idempotent: it reads the API's state and only does what is
 # missing, so a second run changes nothing.
-# Usage: scripts/publish.sh [-index index] [-catalog catalog.json]
+# Usage: scripts/publish.sh [-index index] [-starters starters] [-catalog catalog.json]
 # Environment (values are never printed; see README, "Publishing"):
 #   AGORCH_API, AGORCH_PUBLISHER_TOKEN, AGORCH_PLATFORM_TOKEN, AGORCH_PUBLISHER_SEED_FILE
 #   AGORCH_OWNER_EMAIL (only to create the account), AGORCH_PUBLISHER_KEY_ID (optional)
