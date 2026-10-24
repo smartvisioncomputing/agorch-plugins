@@ -1,11 +1,11 @@
 plugin "sdr-hubspot" {
   aicl_version  = "1.1"
   namespace     = "ao"
-  version       = "0.1.1"
+  version       = "0.1.2"
   publisher     = "publisher:ao"
   description   = "SDR com HubSpot: qualifica leads novos, move no funil, cria follow-up e avisa o vendedor no Slack."
   license       = "Apache-2.0"
-  release_notes = "Pins the connector releases with English tool names and descriptions. The skill, scenarios and agents are unchanged."
+  release_notes = "Pins HubSpot 0.1.4, which signs client_secret_post for the token endpoint. The skill, scenarios and agents are unchanged."
   stack         = "./stack"
 
   exports {
