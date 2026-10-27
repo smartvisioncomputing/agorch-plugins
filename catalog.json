@@ -27,7 +27,7 @@
       "summary": "Leads, funnel and tasks from RD Station, right inside your agent.",
       "category": "sales_marketing",
       "rank": 2,
-      "vendor_official": true,
+      "vendor_official": false,
       "beta": true,
       "auth_kind": "oauth",
       "logo": "rdstation.svg"
@@ -49,7 +49,7 @@
       "summary": "Orders, stock, prices and coupons for your store.",
       "category": "payments_commerce",
       "rank": 4,
-      "vendor_official": true,
+      "vendor_official": false,
       "beta": true,
       "auth_kind": "oauth",
       "logo": "nuvemshop.svg"
