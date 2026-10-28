@@ -8,18 +8,21 @@ name: build
 # It needs the aicl compiler, whose repository is still private.
 # AICL_REPO_TOKEN is a fine-grained token with Contents: read on
 # smartvisioncomputing/aicl only; checkout keeps it out of the git config, and
-# no later step sees it. A pull request from a fork gets no secret: then the
-# job fails when the pull request changes anything other than documentation
-# (Markdown files at the top level and LICENSE; a plugin's README is sealed
-# into its package): sealed packages, the tools that build, check
-# and publish them (cmd/, scripts/, go.mod, go.sum) and the workflows never
-# merge unchecked. Renames are listed as a deletion plus an addition, so a
-# file moved out of index/ counts too. A push to main without the secret warns.
+# no later step sees it. Without the token the job FAILS with a message saying
+# so, on pushes and on pull requests alike: a skipped full check is never a
+# green one. The one exception is a pull request from a fork (forks get no
+# secret) that changes only documentation (Markdown files at the top level and
+# LICENSE; a plugin's README is sealed into its package): it passes with a
+# warning. Everything else a fork changes (sealed packages, the tools that
+# build, check and publish them (cmd/, scripts/, go.mod, go.sum) and the
+# workflows) never merges unchecked; a maintainer pushes it to a branch of this
+# repository to run the check. Renames are listed as a deletion plus an
+# addition, so a file moved out of index/ counts too.
 # Never switch this to pull_request_target.
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, pilot-ready]
 
 permissions:
   contents: read
@@ -38,19 +41,23 @@ jobs:
         env:
           AICL_REPO_TOKEN: ${{ secrets.AICL_REPO_TOKEN }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          IS_FORK: ${{ github.event.pull_request.head.repo.fork }}
         run: |
           if [ -n "$AICL_REPO_TOKEN" ]; then
             echo "present=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if [ -n "$BASE_SHA" ]; then
+          if [ "$IS_FORK" = "true" ] && [ -n "$BASE_SHA" ]; then
             changed="$(git diff --name-only --no-renames "$BASE_SHA" HEAD)" || exit 1
             if printf '%s\n' "$changed" | grep -vE '^[^/]*\.md$|^LICENSE$' | grep -q .; then
               echo "::error title=Full check required::This pull request changes more than the top-level documentation (sealed packages, or what builds, checks or publishes them), and the full check cannot run without AICL_REPO_TOKEN (a fork gets no secret). A maintainer pushes it to a branch of this repository to run the check."
               exit 1
             fi
+            echo "::warning title=Full check skipped::Fork pull request that only changes documentation: AICL_REPO_TOKEN is not available to forks, so the aicl compiler cannot be fetched. The static workflow still ran."
+            exit 0
           fi
-          echo "::warning title=Full check skipped::AICL_REPO_TOKEN is not set, so the aicl compiler cannot be fetched. Only documentation changed, or this is a push; the static workflow still ran."
+          echo "::error title=AICL_REPO_TOKEN is not set::The full check (scripts/check.sh) needs the aicl compiler, fetched from the private smartvisioncomputing/aicl with this secret. Create the secret AICL_REPO_TOKEN (fine-grained token, Contents: read on that repository only) in this repository's Actions secrets. The job fails instead of skipping so a missing token never reads as a green check."
+          exit 1
 
       - if: steps.token.outputs.present == 'true'
         uses: actions/checkout@v4
