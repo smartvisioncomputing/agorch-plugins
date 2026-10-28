@@ -80,7 +80,7 @@ Release tags follow `connectors/<id>@<version>` or `plugins/<id>@<version>`.
 
 ## Publishing
 
-`scripts/publish.sh` takes `index/` to an Agorch registry through the ordinary publisher path: publisher account `publisher:ao`, the `first_party` claim on the `ao` namespace, a signing key, the signed artifact, listing, release, automated checks, platform review and the `stable` channel. It then applies the listing fields from `catalog.json` (`category`, `rank`, `vendor_official`, `beta`). Every step reads the registry's state first, so a second run changes nothing. Starters are not published to the registry.
+`scripts/publish.sh` takes `index/` to an Agorch registry through the ordinary publisher path: publisher account `publisher:ao`, the `first_party` claim on the `ao` namespace, a signing key, the signed artifact, listing, release, automated checks, platform review and the `stable` channel. It then applies the listing fields from `catalog.json` (`category`, `rank`, `vendor_official`, `beta`). Every step reads the registry's state first, so a second run changes nothing. Starters are not published to the registry. A connector with `"verified": false` in `catalog.json` is not published: `publish` skips it and lists it at the end (only what is verified is public).
 
 ```sh
 export AGORCH_API=https://<api>                         # API origin, no trailing slash

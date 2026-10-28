@@ -449,6 +449,10 @@ func (p *publisher) presentation(lpath, ref string, want obj) error {
 	return nil
 }
 
+// verified is the catalog.json rule "not verified is not published": absent or
+// anything but true counts as not verified.
+func verified(c obj) bool { v, _ := c["verified"].(bool); return v }
+
 func main() {
 	indexDir := flag.String("index", "index", "directory with the sealed packages")
 	catalogFile := flag.String("catalog", "catalog.json", "catalog.json with the presentation fields")
@@ -516,6 +520,7 @@ func run(indexDir, catalogFile string) error {
 	if err := p.platformKeys(); err != nil {
 		return err
 	}
+	var skipped []string
 	for _, f := range files {
 		var id struct {
 			Package struct {
@@ -532,9 +537,16 @@ func run(indexDir, catalogFile string) error {
 		if !ok {
 			return fmt.Errorf("%s is not in %s (run scripts/check.sh)", f, catalogFile)
 		}
+		if !verified(present) {
+			skipped = append(skipped, str(present, "id"))
+			continue
+		}
 		if err := p.publish(f, present); err != nil {
 			return err
 		}
+	}
+	if len(skipped) > 0 {
+		p.logf("not published (not verified in %s): %s", catalogFile, strings.Join(skipped, ", "))
 	}
 	if p.changes == 0 {
 		p.logf("done: no changes")
