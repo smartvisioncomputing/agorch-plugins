@@ -43,4 +43,4 @@ Project ids, diagram operations and the text of new element names. What an agent
 
 - Limits per user: 60 reads and 10 writes per minute.
 - Revoke at EERCase (Settings → Connected apps) or disconnect in Agorch.
-- Not in the marketplace index: a sealed package (ComponentPackage v1.1) cannot carry a public client without registration yet, so this stack is applied to an organization with `aicl sync`.
+- Not in the marketplace index: a sealed package (ComponentPackage v1.1) cannot carry a public client without registration yet, so this stack is applied to an organization with `aicl sync -f stacks/eercase/stack`.

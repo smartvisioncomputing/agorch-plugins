@@ -38,6 +38,7 @@ Every connection belongs to an Agorch organization, not to a single user. Creden
 
 ```
 connectors/<vendor>/   plugin.aicl (version, license, readme, release notes, scope labels, source), stack/, README.md
+stacks/<name>/         an unsealed stack/ applied to an organization with aicl sync (not in index/ or the catalog)
 plugins/<starter>/     plugin.aicl (requires, permissions), stack/ (agent, skill in SKILL.md, scenarios), aicl.lock.json, README.md
 index/                 one sealed package per connector (ao.<vendor>-mcp@<version>.json)
 starters/              each starter's sealed agent_system package (ao.<starter>@<version>.json)
