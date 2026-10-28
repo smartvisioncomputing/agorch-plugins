@@ -37,7 +37,7 @@ jq -e --argjson enum "$enum" '
   and ([.connectors[].rank] | (sort == (unique)) and all(type == "number" and . == floor))
   and all(.connectors[];
         (.category as $c | $enum | index($c)) != null
-        and (.vendor_official | type) == "boolean" and (.beta | type) == "boolean"
+        and (.vendor_official | type) == "boolean" and (.beta | type) == "boolean" and (.verified | type) == "boolean"
         and (.auth_kind | IN("oauth", "api_key", "none"))
         and (.display_name | length > 0) and (.summary | length > 0)
         and (.logo | test("^[a-z0-9-]+\\.svg$")))' catalog.json >/dev/null ||
