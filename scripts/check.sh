@@ -10,7 +10,8 @@
 #      file byte for byte; that source must be the current content of the
 #      connector at HEAD, a version is never sealed with two digests, and
 #      every connector has exactly one package;
-#   5. plugin validate on every connector and plugin (plugins against index/);
+#   5. plugin validate on every connector and plugin (plugins against index/),
+#      and aicl validate on every unsealed stack in stacks/;
 #   6. each plugin is built twice (same digests and bytes) and starters/ holds
 #      exactly its agent_system packages.
 # Usage: AICL=/path/to/aicl scripts/check.sh
@@ -115,6 +116,14 @@ for f in index/*.json; do
 done
 [ "$(printf '%s' "$covered" | sort)" = "$(ls -d connectors/*/ | sed 's:/$::' | sort)" ] ||
   fail "index/ must hold exactly one package per connector: run scripts/index.sh"
+
+# Unsealed stacks (stacks/<name>/stack, applied with aicl sync): never in
+# index/, but validated like everything else.
+for dir in stacks/*/stack/; do
+  [ -d "$dir" ] || continue
+  echo "== validate $dir"
+  "$AICL" validate -f "$dir" >/dev/null || fail "validate $dir"
+done
 
 mkdir -p "$tmp/starters"
 for dir in connectors/*/ plugins/*/; do

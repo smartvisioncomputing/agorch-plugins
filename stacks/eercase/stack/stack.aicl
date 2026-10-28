@@ -1,0 +1,154 @@
+# EERCase (CIn/UFPE) MCP server: EER diagrams of the signed-in user. Checked
+# on 2026-10-28 against the backend source (branch feat/ia-modelagem):
+#   doc:    backend/docs/mcp.md, backend/docs/oauth.md
+#   OAuth:  https://eercase.cin.ufpe.br/.well-known/oauth-authorization-server
+#           (authorize, token, revoke; no registration endpoint:
+#           client_id_metadata_document_supported, public clients only)
+#
+# Not sealed: ComponentPackage v1.1 expresses neither a dynamic client nor a
+# public (token_endpoint_auth_method "none") one, so this stack is applied to
+# an organization as is (aicl sync), not published as ao/eercase-mcp.
+stack "eercase" {
+  aicl_version = "1.1"
+  version      = "0.1.0"
+}
+
+authority "eercase" {
+  origins  = ["https://eercase.cin.ufpe.br"]
+  purposes = ["mcp_server", "oauth_authorization", "oauth_token", "oauth_registration"]
+}
+
+# registration = "dynamic": the API discovers the AS (RFC 9728, RFC 8414)
+# and, with no registration endpoint, uses Agorch's Client ID Metadata
+# Document (AO_STACK_OAUTH_CLIENT_METADATA_URL) as the public client_id,
+# PKCE S256 and the RFC 8707 resource on authorize, token and refresh.
+auth_provider "eercase_oauth" {
+  authorities = ["eercase"]
+  principal   = "organization" # one connection per Agorch organization
+  oauth2_authorization_code_pkce {
+    registration            = "dynamic"
+    registration_authority  = "eercase"
+    authorization_authority = "eercase"
+    authorization_path      = "/oauth/authorize"
+    token_authority         = "eercase"
+    token_path              = "/oauth/token"
+    issuer                  = "https://eercase.cin.ufpe.br"     # RFC 8414, exactly as published (RFC 9207 iss is checked)
+    scopes                  = ["eercase:read", "eercase:write"] # the user may uncheck write at consent
+    redirect_uris           = ["https://app.agorch.ai/connection-oauth/callback/37e0e8bea41b81a116b1707c9eaea07c"]
+  }
+}
+
+mcp_server "eercase" {
+  authority = "eercase"
+  url       = "https://eercase.cin.ufpe.br/mcp"
+  auth      = "eercase_oauth"
+  allow = ["list_projects", "get_project", "get_diagram_image", "validate_project", "generate_sql", "get_guide",
+  "propose_changes", "get_proposal", "apply_changes", "create_project"]
+}
+
+tool "eercase_list_projects" {
+  name        = "List EERCase projects"
+  side_effect = "read_only"
+  timeout_ms  = 30000
+  mcp {
+    server = "eercase"
+    tool   = "list_projects"
+  }
+}
+
+tool "eercase_get_project" {
+  name        = "Read an EERCase diagram"
+  description = "The diagram as compact text with every element id and the project version."
+  side_effect = "read_only"
+  timeout_ms  = 30000
+  mcp {
+    server = "eercase"
+    tool   = "get_project"
+  }
+}
+
+tool "eercase_get_diagram_image" {
+  name        = "Render an EERCase diagram (PNG)"
+  side_effect = "read_only"
+  timeout_ms  = 30000
+  mcp {
+    server = "eercase"
+    tool   = "get_diagram_image"
+  }
+}
+
+tool "eercase_validate_project" {
+  name        = "Validate an EERCase diagram"
+  side_effect = "read_only"
+  timeout_ms  = 30000
+  mcp {
+    server = "eercase"
+    tool   = "validate_project"
+  }
+}
+
+tool "eercase_generate_sql" {
+  name        = "Generate SQL from an EERCase diagram"
+  side_effect = "read_only"
+  timeout_ms  = 30000
+  mcp {
+    server = "eercase"
+    tool   = "generate_sql"
+  }
+}
+
+tool "eercase_get_guide" {
+  name        = "EERCase modeling guide"
+  side_effect = "read_only"
+  timeout_ms  = 30000
+  mcp {
+    server = "eercase"
+    tool   = "get_guide"
+  }
+}
+
+# Sends a proposal to the editor the user has open and waits up to 45 s for
+# Apply or Discard: the timeout leaves room for that wait.
+tool "eercase_propose_changes" {
+  name        = "Propose changes in the EERCase editor"
+  side_effect = "mutating"
+  idempotency = "not_idempotent" # a write: never retried automatically
+  timeout_ms  = 60000
+  mcp {
+    server = "eercase"
+    tool   = "propose_changes"
+  }
+}
+
+tool "eercase_get_proposal" {
+  name        = "Read a pending EERCase proposal"
+  side_effect = "read_only"
+  timeout_ms  = 30000
+  mcp {
+    server = "eercase"
+    tool   = "get_proposal"
+  }
+}
+
+# Saves at once; version_conflict when the project changed after base_version.
+tool "eercase_apply_changes" {
+  name        = "Apply changes to an EERCase diagram"
+  side_effect = "destructive"
+  idempotency = "not_idempotent"
+  timeout_ms  = 30000
+  mcp {
+    server = "eercase"
+    tool   = "apply_changes"
+  }
+}
+
+tool "eercase_create_project" {
+  name        = "Create an EERCase project"
+  side_effect = "mutating"
+  idempotency = "not_idempotent"
+  timeout_ms  = 30000
+  mcp {
+    server = "eercase"
+    tool   = "create_project"
+  }
+}
